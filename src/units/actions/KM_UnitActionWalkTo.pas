@@ -190,10 +190,8 @@ begin
 
   if aSetPushed then
   begin
-    gTerrain.Land[aLocB.Y,aLocB.X].JamMeter := gTerrain.Land[aLocB.Y,aLocB.X].JamMeter + 1;
-    gTerrain.Land[fUnit.CurrPosition.Y,fUnit.CurrPosition.X].JamMeter := gTerrain.Land[fUnit.CurrPosition.Y,fUnit.CurrPosition.X].JamMeter + 2;
-//    fUnit.fFreeWalkBreadCrumbs.Add(aLocB);
-//    fUnit.fFreeWalkBreadCrumbs.Add(fUnit.CurrPosition);
+    gTerrain.IncTileJamMeter(aLocB, 1);
+    gTerrain.IncTileJamMeter(fUnit.CurrPosition, 1);
     fInteractionStatus := kisPushed; //So that unit knows it was pushed not just walking somewhere
     Explanation := 'We were asked to get out of the way';
     ExplanationLogAdd;

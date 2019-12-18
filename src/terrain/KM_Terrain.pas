@@ -146,6 +146,8 @@ type
     property MapY: Word read fMapY;
     property MapRect: TKMRect read fMapRect;
 
+    procedure IncTileJamMeter(const aLoc: TKMPoint; aValue: Integer);
+    function GetTileJamMeter(const aLoc: TKMPoint): Integer;
     procedure SetTileLock(const aLoc: TKMPoint; aTileLock: TKMTileLock);
     procedure UnlockTile(const aLoc: TKMPoint);
     procedure SetRoads(aList: TKMPointList; aOwner: TKMHandID; aUpdateWalkConnects: Boolean = True);
@@ -1725,6 +1727,22 @@ begin
 end;
 
 
+procedure TKMTerrain.IncTileJamMeter(const aLoc: TKMPoint; aValue: Integer);
+begin
+  if not TileInMapCoords(aLoc) then Exit;
+
+  Land[aLoc.Y, aLoc.X].JamMeter := Max(0, Land[aLoc.Y, aLoc.X].JamMeter + aValue);
+end;
+
+
+function TKMTerrain.GetTileJamMeter(const aLoc: TKMPoint): Integer;
+begin
+  if not TileInMapCoords(aLoc) then Exit(0);
+
+  Result := Land[aLoc.Y, aLoc.X].JamMeter;
+end;
+
+
 //Place lock on tile, any new TileLock replaces old one, thats okay
 procedure TKMTerrain.SetTileLock(const aLoc: TKMPoint; aTileLock: TKMTileLock);
 var
@@ -3283,7 +3301,7 @@ begin
   Loc := U.CurrPosition;
 
   Result := Loc;
-  bestWeight := -100000;
+  bestWeight := -1e30;
   exchWithPushedPusherChoosen := False;
 
   // Check all available walkable positions except self
@@ -3306,7 +3324,7 @@ begin
         isOffroad := False;//not TileHasRoad(tx, ty);
         // Try to be pushed to exchange with pusher or to push other non-locked units
         isPushable := False;
-//        exchWithPushedPusher := False;
+        exchWithPushedPusher := False;
         if Land[ty, tx].IsUnit <> nil then
         begin
           TempUnit := UnitsHitTest(tx, ty);
@@ -3314,11 +3332,7 @@ begin
           if (KMPoint(tx, ty) = PusherLoc) then
           begin
             if aPusherWasPushed then
-            begin
-              exchWithPushedPusher := True;
-              exchWithPushedPusherChoosen := True;
-//              isPushable := True;
-            end
+              exchWithPushedPusher := True
             else
               isPushable := True;
           end
@@ -3330,27 +3344,20 @@ begin
         newWeight := 40*Ord(isFree)
                       + Ord(isOffroad)
                       + Ord(isPushable)
-//                      - 10*Ord(exchWithPushedPusher)
-                      + 2*KaMRandom('TKMTerrain.GetOutOfTheWay')
-//                      - 4*U.fFreeWalkBreadCrumbs.GetPointsCnt(KMPoint(tx, ty))
-                      - 0.5*Land[ty,tx].JamMeter;
-                      ;
-//        if DBG_PUSH_MODE > 0 then
-//          newWeight := newWeight - 10*Ord(exchWithPushedPusher);
-//
-//        if DBG_PUSH_MODE = 2 then
-//          newWeight := newWeight - 4*U.fFreeWalkBreadCrumbs.GetPointsCnt(KMPoint(tx, ty));
+                      - 0.3*Land[ty,tx].JamMeter
+                      + 2*KaMRandom('TKMTerrain.GetOutOfTheWay');
 
         if newWeight > bestWeight then
         begin
           bestWeight := newWeight;
           Result := KMPoint(tx, ty);
-          if exchWithPushedPusherChoosen then
-            Land[Loc.Y,Loc.X].JamMeter := Land[Loc.Y,Loc.X].JamMeter + 8;
-//          gLog.AddTime(Format('%s -(EXCH = %s)- %d', [Result.ToString, BoolToStr(exchWithPushedPusher, True), U.fFreeWalkBreadCrumbs.GetPointsCnt(Result)]));
+          exchWithPushedPusherChoosen := exchWithPushedPusher;
         end;
       end;
     end;
+  //Punish very bad positions, where we decided to exchange with pusher's loc
+  if exchWithPushedPusherChoosen then
+    IncTileJamMeter(Loc, 50);
 end;
 
 

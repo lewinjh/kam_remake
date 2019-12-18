@@ -36,7 +36,7 @@ type
   public
     Duration: Integer;
     OnProgress: TUnicodeStringEvent;
-    OnProgressStr: TUnicodeStringEvent;
+    OnProgress2: TUnicodeStringEvent;
     constructor Create(aRenderTarget: TKMRenderControl); reintroduce;
     function Run(aCount: Integer): TKMRunResults;
   end;

@@ -357,7 +357,7 @@ end;
 
 procedure TRenderAux.TileTerrainJamMeter(const aRect: TKMRect);
 var
-  I, J, K, L: Integer;
+  I, J: Integer;
 begin
   for I := aRect.Top to aRect.Bottom do
     for J := aRect.Left to aRect.Right do
