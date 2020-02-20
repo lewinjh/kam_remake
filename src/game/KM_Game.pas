@@ -2383,15 +2383,15 @@ begin
                           if (fGameTick mod gGameApp.GameSettings.AutosaveFrequency) = 0 then
                             IssueAutosaveCommand;
 
-                          if DO_PERF_LOGGING then
-                            fPerfLog.LeaveSection(psTick);
-
                           CheckPauseGameAtTick;
 
                           Result := True;
 
                           if DoSaveRandomChecks then
                             gRandomCheckLogger.UpdateState(fGameTick);
+
+                          if DO_PERF_LOGGING then
+                            fPerfLog.LeaveSection(psTick);
                         end
                         else
                         begin

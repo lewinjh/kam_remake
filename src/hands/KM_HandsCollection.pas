@@ -106,7 +106,7 @@ uses
   KM_Game, KM_Terrain, KM_AIFields,
   KM_UnitsCollection,
   KM_Resource, KM_ResUnits,
-  KM_Log, KM_CommonUtils;
+  KM_Log, KM_CommonUtils, KM_PerfLog;
 
 
 { TKMHandsCollection }
@@ -993,6 +993,8 @@ procedure TKMHandsCollection.UpdateState(aTick: Cardinal);
 var
   I: Integer;
 begin
+  if DO_PERF_LOGGING then fPerfLog.EnterSection(psHands);
+
   for I := 0 to Count - 1 do
   if (gGame <> nil) and not gGame.IsPaused and not gGame.IsExiting then
     fHandsList[I].UpdateState(aTick)
@@ -1001,6 +1003,8 @@ begin
     Exit;
 
   PlayerAnimals.UpdateState(aTick); //Animals don't have any AI yet
+
+  if DO_PERF_LOGGING then fPerfLog.LeaveSection(psHands);
 end;
 
 

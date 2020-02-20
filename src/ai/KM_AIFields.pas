@@ -40,7 +40,8 @@ var
 implementation
 uses
   SysUtils,
-  KM_Defaults;
+  KM_Defaults,
+  KM_PerfLog;
 
 
 { TKMAIFields }
@@ -97,10 +98,12 @@ end;
 
 procedure TKMAIFields.UpdateState(aTick: Cardinal);
 begin
+  if DO_PERF_LOGGING then fPerfLog.EnterSection(psAIField);
   fNavMesh.UpdateState(aTick);
   fInfluences.UpdateState(aTick);
   fEye.UpdateState(aTick);
   fSupervisor.UpdateState(aTick);
+  if DO_PERF_LOGGING then fPerfLog.LeaveSection(psAIField);
 end;
 
 

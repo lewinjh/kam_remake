@@ -199,7 +199,8 @@ const
 
 implementation
 uses
-  TypInfo, Math, KromUtils, KM_Game, KM_Resource, KM_ResUnits, KM_Log, KM_CommonUtils, KM_ResWares, KM_ScriptingConsoleCommands;
+  TypInfo, Math, KromUtils, KM_Game, KM_Resource, KM_ResUnits, KM_Log, KM_CommonUtils, KM_ResWares,
+  KM_ScriptingConsoleCommands, KM_PerfLog;
 
 const
   SCRIPT_LOG_EXT = '.log.txt';
@@ -1678,8 +1679,10 @@ end;
 
 procedure TKMScripting.UpdateState;
 begin
+  if DO_PERF_LOGGING then fPerfLog.EnterSection(psAIField);
   gScriptEvents.ProcTick;
   fIDCache.UpdateState;
+  if DO_PERF_LOGGING then fPerfLog.EnterSection(psAIField);
 end;
 
 

@@ -51,7 +51,7 @@ const
   //Also there is a technical limit, of how many ticks we can calculate per update
   MAX_TICKS_PER_GAME_UPDATE = 100;
 
-  DEBUG_CFG = False; //Debug preset for most usable debug options
+  DEBUG_CFG = true; //Debug preset for most usable debug options
 var
   // These should be True (we can occasionally turn them Off to speed up the debug)
   CALC_EXPECTED_TICK    :Boolean = not DEBUG_CFG;  //Do we calculate expected tick and try to be in-time (send as many tick as needed to get to expected tick)
@@ -180,7 +180,7 @@ var
   SLOW_MAP_SCAN           :Boolean = False; //Scan maps with a pause to emulate uncached file access
   SLOW_SAVE_SCAN          :Boolean = False; //Scan saves with a pause to emulate uncached file access
   SLOW_MAP_SAVE_LOAD      :Boolean = False; //Load map or save to emulate slow network
-  DO_PERF_LOGGING         :Boolean = False; //Write each ticks time to log
+  DO_PERF_LOGGING         :Boolean = true; //Write each ticks time to log
   MP_RESULTS_IN_SP        :Boolean = False; //Display each players stats in SP
   SHOW_DEBUG_OVERLAY_BEVEL:Boolean = True; //Show debug text overlay Bevel (for better text readability)
   {Gameplay}

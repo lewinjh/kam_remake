@@ -4,15 +4,17 @@ interface
 
 
 type
-  TPerfSection = (psTick, psHungarian);
+  TPerfSection = (psTick, psHungarian, psAIFields, psFOW, psHands, psScripting);
 
   //Log how much time each section takes and write results to a log file
+
+//  TKMTickTimes = record
 
   TKMPerfLog = class
   private
     fCount: array [TPerfSection] of Integer;
-    fTimeEnter: array [TPerfSection] of Cardinal;
-    fTimes: array [TPerfSection] of array of Cardinal;
+    fTimeEnter: array [TPerfSection] of Int64;
+    fTimes: array [TPerfSection] of array of Int64;
   public
     procedure Clear;
     procedure EnterSection(aSection: TPerfSection);
@@ -28,7 +30,9 @@ uses
 
 const
   //Unicode for TStringList population
-  SectionName: array [TPerfSection] of UnicodeString = ('Tick', 'Hungarian');
+  SectionName: array [TPerfSection] of UnicodeString = ('Tick', 'Hungarian', 'AIFields', 'FOW', 'Hands', 'Scripting');
+
+  LIMITS: array[TPerfSection] of Integer = (30000, 5000, 5000, 5000, 5000, 5000);
 
 
 { TKMPerfLog }
@@ -43,14 +47,14 @@ end;
 
 procedure TKMPerfLog.EnterSection(aSection: TPerfSection);
 begin
-  fTimeEnter[aSection] := TimeGet;
+  fTimeEnter[aSection] := TimeGetUsec;
 end;
 
 
 procedure TKMPerfLog.LeaveSection(aSection: TPerfSection);
-var T: Cardinal;
+var T: Int64;
 begin
-  T := TimeGet - fTimeEnter[aSection]; //Measure it ASAP
+  T := TimeGetUsec - fTimeEnter[aSection]; //Measure it ASAP
   if fCount[aSection] >= Length(fTimes[aSection]) then
     SetLength(fTimes[aSection], fCount[aSection] + 1024);
 
@@ -77,7 +81,7 @@ begin
 
     //Times
     for I := 0 to fCount[K] - 1 do
-    if fTimes[K,I] > 10 then //Dont bother saving 95% of data
+    if fTimes[K,I] > LIMITS[K] then //Dont bother saving 95% of data
       S.Append(Format('%d'#9'%d', [I, fTimes[K,I]]));
 
     //Footer
