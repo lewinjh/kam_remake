@@ -482,7 +482,7 @@ begin
       // With the help of uPSDebugger get information about error position in script code
       if fExec.TranslatePositionEx(fExec.LastExProc, fExec.LastExPos, Pos, Row, Col, TBTFileName) then
       begin
-        ErrorMessage := gGame.Scripting.GetErrorMessage('Error', '', Row, Col);
+        ErrorMessage := gGame.Scripting.GetErrorMessage('Error', '', TBTFileName, Row, Col);
         ErrorStr := MainErrorStr + ErrorMessage.GameMessage;
         DetailedErrorStr := MainErrorStr + ErrorMessage.LogMessage;
       end;
