@@ -467,7 +467,6 @@ var
   FileName: tbtstring;
   ErrorMessage: TKMScriptErrorMessage;
   Res: TPSLineInfoResults;
-  CallStackCnt: Cardinal;
 begin
   if ExceptionOutsideScript then
   begin

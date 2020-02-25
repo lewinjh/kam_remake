@@ -1918,6 +1918,9 @@ begin
   inherited Create;
 
   fPreProcessor := TPSPreProcessor.Create;
+  fPreProcessor.OnNeedFile := ScriptOnNeedFile;
+  fPreProcessor.OnProcessDirective := ScriptOnProcessDirective;
+
   fScriptFilesInfo := TKMScriptFilesCollection.Create;
 
   fErrorHandler := aErrorHandler;
@@ -1983,7 +1986,6 @@ end;
 
 function TKMScriptingPreProcessor.PreProcessFile(const aFileName: UnicodeString; var aScriptCode: AnsiString): Boolean;
 var
-//  PreProcessor: TPSPreProcessor;
   MainScriptCode: AnsiString;
 begin
   Result := False;
@@ -1996,27 +1998,21 @@ begin
   end;
 
   MainScriptCode := ReadTextA(aFileName);
-//  PreProcessor := TPSPreProcessor.Create;
+
+  fPreProcessor.MainFileName := AnsiString(aFileName);
+  fPreProcessor.MainFile := MainScriptCode;
+  BeforePreProcess(aFileName, MainScriptCode);
   try
-    fPreProcessor.OnNeedFile := ScriptOnNeedFile;
-    fPreProcessor.OnProcessDirective := ScriptOnProcessDirective;
-    fPreProcessor.MainFileName := AnsiString(aFileName);
-    fPreProcessor.MainFile := MainScriptCode;
-    BeforePreProcess(aFileName, MainScriptCode);
-    try
-      fPreProcessor.PreProcess(fPreProcessor.MainFileName, aScriptCode);
-      AfterPreProcess;
-      Result := True; // If PreProcess has been done succesfully
-    except
-      on E: Exception do
-      begin
-        fErrorHandler.HandleScriptErrorString(sePreprocessorError, 'Script preprocessing errors:' + EolW + E.Message);
-        if fValidationIssues <> nil then
-          fValidationIssues.AddError(0, 0, '', 'Script preprocessing errors:' + EolW + E.Message);
-      end;
+    fPreProcessor.PreProcess(fPreProcessor.MainFileName, aScriptCode);
+    AfterPreProcess;
+    Result := True; // If PreProcess has been done succesfully
+  except
+    on E: Exception do
+    begin
+      fErrorHandler.HandleScriptErrorString(sePreprocessorError, 'Script preprocessing errors:' + EolW + E.Message);
+      if fValidationIssues <> nil then
+        fValidationIssues.AddError(0, 0, '', 'Script preprocessing errors:' + EolW + E.Message);
     end;
-  finally
-//    fPreProcessor.Free;
   end;
 end;
 
