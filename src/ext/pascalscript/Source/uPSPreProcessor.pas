@@ -282,7 +282,6 @@ begin
       Res.Pos := Pos;
       Res.Col := 1;
       Res.Row := 1;
-      LinePos := 0;
       for j := 0 to Item.LineOffsetCount -1 do
       begin
         if Pos >= Item.LineOffset[j] then
