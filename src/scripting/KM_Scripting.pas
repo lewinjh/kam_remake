@@ -1751,7 +1751,7 @@ begin
 //                DetailedErrorMsg := DetailedErrorMsg + EolW + Format(ErrorTemplate, [FileNamesArr[I], RowsArr[I], aCol]);
 //            end;
 //    end;
-  end;
+//  end;
 
   ErrorMsgTemplate := aShortErrorDescription + '%s' + EolW;
 
