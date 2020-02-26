@@ -53,6 +53,7 @@ type
   // Collect everything that need to be rendered and put it in a list
   TRenderPool = class
   private
+    fCounter: Cardinal;
     fRXData: array [TRXType] of TRXData; // Shortcuts
     fViewport: TKMViewport;
     fRender: TRender;
@@ -163,6 +164,8 @@ var
 begin
   inherited Create;
 
+  fCounter := 0;
+
   for RT := Low(TRXType) to High(TRXType) do
     fRXData[RT] := gRes.Sprites[RT].RXData;
 
@@ -252,6 +255,11 @@ var
   ClipRect: TKMRect;
 begin
   if fRender.Blind then Exit;
+
+  Inc(fCounter);
+
+  if DO_PERF_LOGGING then gGame.PerfLog.StartTick(fCounter);
+
   if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRender);
 
   ApplyTransform;
@@ -336,6 +344,8 @@ begin
 
   glPopAttrib;
   if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRender);
+
+  if DO_PERF_LOGGING then gGame.PerfLog.EndTick;
 end;
 
 
