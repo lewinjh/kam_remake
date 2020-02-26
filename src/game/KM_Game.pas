@@ -2335,7 +2335,7 @@ begin
                       begin
                         if fGameInputProcess.CommandsConfirmed(fGameTick + 1) then
                         begin
-                          if DO_PERF_LOGGING then fPerfLog.EnterSection(psTick);
+                          if DO_PERF_LOGGING then fPerfLog.StartTick(fGameTick + 1);
 
                           //As soon as next command arrives we are longer in a waiting state
                           if fWaitingForNetwork then
@@ -2391,7 +2391,7 @@ begin
                             gRandomCheckLogger.UpdateState(fGameTick);
 
                           if DO_PERF_LOGGING then
-                            fPerfLog.LeaveSection(psTick);
+                            fPerfLog.EndTick;
                         end
                         else
                         begin

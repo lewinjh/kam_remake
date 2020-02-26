@@ -41,6 +41,7 @@ implementation
 uses
   SysUtils,
   KM_Defaults,
+  KM_Game,
   KM_PerfLog;
 
 
@@ -98,12 +99,15 @@ end;
 
 procedure TKMAIFields.UpdateState(aTick: Cardinal);
 begin
-  if DO_PERF_LOGGING then fPerfLog.EnterSection(psAIField);
-  fNavMesh.UpdateState(aTick);
-  fInfluences.UpdateState(aTick);
-  fEye.UpdateState(aTick);
-  fSupervisor.UpdateState(aTick);
-  if DO_PERF_LOGGING then fPerfLog.LeaveSection(psAIField);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psAIFields);
+  try
+    fNavMesh.UpdateState(aTick);
+    fInfluences.UpdateState(aTick);
+    fEye.UpdateState(aTick);
+    fSupervisor.UpdateState(aTick);
+  finally
+    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psAIFields);
+  end;
 end;
 
 

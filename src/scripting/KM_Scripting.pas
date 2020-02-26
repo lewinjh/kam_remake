@@ -1679,10 +1679,8 @@ end;
 
 procedure TKMScripting.UpdateState;
 begin
-  if DO_PERF_LOGGING then fPerfLog.EnterSection(psAIField);
   gScriptEvents.ProcTick;
   fIDCache.UpdateState;
-  if DO_PERF_LOGGING then fPerfLog.EnterSection(psAIField);
 end;
 
 

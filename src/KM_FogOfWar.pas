@@ -110,7 +110,7 @@ const
 
 implementation
 uses
-  Math, SysUtils, KM_GameApp;
+  Math, SysUtils, KM_GameApp, KM_PerfLog;
 
 const
   //Addition to Revelation radius for Render revelation
@@ -196,22 +196,27 @@ procedure TKMFogOfWar.RevealCircle(const Pos: TKMPoint; Radius, Amount: Word);
 var
   AroundRadius: Word;
 begin
-  AroundRadius := Radius + RENDER_RADIUS_ADD;
-  if not fCoverHasBeenCalled and not gGameApp.DynamicFOWEnabled then
-  begin
-    if fRevealedRadius[Pos.Y, Pos.X] < Radius then
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  try
+    AroundRadius := Radius + RENDER_RADIUS_ADD;
+    if not fCoverHasBeenCalled and not gGameApp.DynamicFOWEnabled then
     begin
-      fRevealedRadius[Pos.Y, Pos.X] := Radius;
+      if fRevealedRadius[Pos.Y, Pos.X] < Radius then
+      begin
+        fRevealedRadius[Pos.Y, Pos.X] := Radius;
+        RevealFor(True, Radius, Amount);
+      end;
+      if fRenderRevRevealedRad[Pos.Y, Pos.X] < AroundRadius then
+      begin
+        fRenderRevRevealedRad[Pos.Y, Pos.X] := AroundRadius;
+        RevealFor(False, AroundRadius, FOG_OF_WAR_MAX);
+      end;
+    end else begin
       RevealFor(True, Radius, Amount);
-    end;
-    if fRenderRevRevealedRad[Pos.Y, Pos.X] < AroundRadius then
-    begin
-      fRenderRevRevealedRad[Pos.Y, Pos.X] := AroundRadius;
       RevealFor(False, AroundRadius, FOG_OF_WAR_MAX);
     end;
-  end else begin
-    RevealFor(True, Radius, Amount);
-    RevealFor(False, AroundRadius, FOG_OF_WAR_MAX);
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
   end;
 end;
 
@@ -245,10 +250,15 @@ procedure TKMFogOfWar.CoverCircle(const Pos: TKMPoint; Radius: Word);
   end;
 
 begin
-  CoverFor(True, Radius);
-  CoverFor(False, Radius - RENDER_RADIUS_ADD);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  try
+    CoverFor(True, Radius);
+    CoverFor(False, Radius - RENDER_RADIUS_ADD);
 
-  fCoverHasBeenCalled := True;
+    fCoverHasBeenCalled := True;
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+  end;
 end;
 
 
@@ -256,18 +266,23 @@ procedure TKMFogOfWar.RevealRect(const TL, BR: TKMPoint; Amount: Word);
 var
   I, K: Word;
 begin
-  for I := TL.Y to BR.Y do
-    for K := TL.X to BR.X do
-    begin
-      Revelation[I,K] := Min(Revelation[I,K] + Amount, FOG_OF_WAR_MAX);
-      if Revelation[I,K] = FOG_OF_WAR_MAX then
-        fRevealedToMax[I,K] := True;
-    end;
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  try
+    for I := TL.Y to BR.Y do
+      for K := TL.X to BR.X do
+      begin
+        Revelation[I,K] := Min(Revelation[I,K] + Amount, FOG_OF_WAR_MAX);
+        if Revelation[I,K] = FOG_OF_WAR_MAX then
+          fRevealedToMax[I,K] := True;
+      end;
 
-  // Reveal with bigger radius for AroundRevelation
-  for I := Max(0, TL.Y - RENDER_RADIUS_ADD) to Min(fMapY - 1, BR.Y + RENDER_RADIUS_ADD) do
-    for K := Max(0, TL.X - RENDER_RADIUS_ADD) to Min(fMapX - 1, BR.X + RENDER_RADIUS_ADD) do
-      RenderRevelation[I,K] := FOG_OF_WAR_MAX;
+    // Reveal with bigger radius for AroundRevelation
+    for I := Max(0, TL.Y - RENDER_RADIUS_ADD) to Min(fMapY - 1, BR.Y + RENDER_RADIUS_ADD) do
+      for K := Max(0, TL.X - RENDER_RADIUS_ADD) to Min(fMapX - 1, BR.X + RENDER_RADIUS_ADD) do
+        RenderRevelation[I,K] := FOG_OF_WAR_MAX;
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+  end;
 end;
 
 
@@ -275,16 +290,21 @@ procedure TKMFogOfWar.CoverRect(const TL, BR: TKMPoint);
 var
   I, K: Word;
 begin
-  for I := TL.Y to BR.Y do
-    for K := TL.X to BR.X do
-      Revelation[I,K] := 0;
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  try
+    for I := TL.Y to BR.Y do
+      for K := TL.X to BR.X do
+        Revelation[I,K] := 0;
 
-  // Cover with smaller radius for AroundRevelation, as nearby could be reveled tiles
-  for I := Min(fMapY - 1, TL.Y + RENDER_RADIUS_ADD) to Max(0, BR.Y - RENDER_RADIUS_ADD) do
-    for K := Min(fMapX - 1, TL.X + RENDER_RADIUS_ADD) to Max(0, BR.X - RENDER_RADIUS_ADD) do
-      RenderRevelation[I,K] := 0;
+    // Cover with smaller radius for AroundRevelation, as nearby could be reveled tiles
+    for I := Min(fMapY - 1, TL.Y + RENDER_RADIUS_ADD) to Max(0, BR.Y - RENDER_RADIUS_ADD) do
+      for K := Min(fMapX - 1, TL.X + RENDER_RADIUS_ADD) to Max(0, BR.X - RENDER_RADIUS_ADD) do
+        RenderRevelation[I,K] := 0;
 
-  fCoverHasBeenCalled := True;
+    fCoverHasBeenCalled := True;
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+  end;
 end;
 
 
@@ -293,12 +313,17 @@ procedure TKMFogOfWar.RevealEverything;
 var
   I,K: Word;
 begin
-  for I := 0 to fMapY - 1 do
-    for K := 0 to fMapX - 1 do
-    begin
-      Revelation[I, K] := FOG_OF_WAR_MAX;
-      RenderRevelation[I, K] := FOG_OF_WAR_MAX;
-    end;
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  try
+    for I := 0 to fMapY - 1 do
+      for K := 0 to fMapX - 1 do
+      begin
+        Revelation[I, K] := FOG_OF_WAR_MAX;
+        RenderRevelation[I, K] := FOG_OF_WAR_MAX;
+      end;
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+  end;
 end;
 
 
@@ -306,14 +331,19 @@ procedure TKMFogOfWar.CoverEverything;
 var
   I,K: Word;
 begin
-  for I := 0 to fMapY - 1 do
-    for K := 0 to fMapX - 1 do
-    begin
-      Revelation[I, K] := 0;
-      RenderRevelation[I, K] := FOG_OF_WAR_MAX;
-    end;
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  try
+    for I := 0 to fMapY - 1 do
+      for K := 0 to fMapX - 1 do
+      begin
+        Revelation[I, K] := 0;
+        RenderRevelation[I, K] := FOG_OF_WAR_MAX;
+      end;
 
-  fCoverHasBeenCalled := True;
+    fCoverHasBeenCalled := True;
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+  end;
 end;
 
 
@@ -340,37 +370,68 @@ end;
 
 function TKMFogOfWar.CheckVerticeRevelation(const X, Y: Word): Byte;
 begin
-  Result := CheckVerticeRev(@Revelation, X, Y);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck);
+  try
+    Result := CheckVerticeRev(@Revelation, X, Y);
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck);
+  end;
 end;
 
 
 function TKMFogOfWar.CheckRevelation(const aPoint: TKMPointF): Byte;
 begin
-  Result := CheckRev(@Revelation, aPoint);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck);
+  try
+    Result := CheckRev(@Revelation, aPoint);
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck);
+  end;
 end;
 
 
 function TKMFogOfWar.CheckTileRevelation(const X, Y: Word): Byte;
 begin
-  Result := CheckTileRev(@Revelation, X, Y);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck3);
+  try
+    Result := CheckTileRev(@Revelation, X, Y);
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck3);
+  end;
 end;
 
 
 function TKMFogOfWar.CheckVerticeRenderRev(const X, Y: Word): Byte;
 begin
-  Result := CheckVerticeRev(@RenderRevelation, X, Y);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck);
+  try
+    Result := CheckVerticeRev(@RenderRevelation, X, Y);
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck);
+  end;
 end;
 
 
 function TKMFogOfWar.CheckTileRenderRev(const X, Y: Word): Byte;
 begin
-  Result := CheckTileRev(@RenderRevelation, X, Y);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck5);
+//  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck6);
+  try
+    Result := CheckTileRev(@RenderRevelation, X, Y);
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck5);
+  end;
 end;
 
 
 function TKMFogOfWar.CheckRenderRev(const aPoint: TKMPointF): Byte;
 begin
-  Result := CheckRev(@RenderRevelation, aPoint);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck);
+  try
+    Result := CheckRev(@RenderRevelation, aPoint);
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck);
+  end;
 end;
 
 
@@ -507,30 +568,35 @@ var
 begin
   if not gGameApp.DynamicFOWEnabled then Exit;
 
-  Inc(fAnimStep);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  try
+    Inc(fAnimStep);
 
-  for I := 0 to fMapY - 1 do
-    for K := 0 to fMapX - 1 do
-      if {(Revelation[I, K] > 0)//(Revelation[I, K] > FOG_OF_WAR_MIN)
-        and }((I * fMapX + K + fAnimStep) mod FOW_PACE = 0) then
-      begin
-        if (Revelation[I, K] > FOG_OF_WAR_MAX - FOG_OF_WAR_DEC) then
+    for I := 0 to fMapY - 1 do
+      for K := 0 to fMapX - 1 do
+        if {(Revelation[I, K] > 0)//(Revelation[I, K] > FOG_OF_WAR_MIN)
+          and }((I * fMapX + K + fAnimStep) mod FOW_PACE = 0) then
         begin
-          if not fRevealedToMax[I, K] then
-            Revelation[I, K] := Max(0, Revelation[I, K] - FOG_OF_WAR_DEC)
-          else
-            fRevealedToMax[I, K] := False;
-        end else
-          Revelation[I, K] := Max(0, Revelation[I, K] - FOG_OF_WAR_DEC);
+          if (Revelation[I, K] > FOG_OF_WAR_MAX - FOG_OF_WAR_DEC) then
+          begin
+            if not fRevealedToMax[I, K] then
+              Revelation[I, K] := Max(0, Revelation[I, K] - FOG_OF_WAR_DEC)
+            else
+              fRevealedToMax[I, K] := False;
+          end else
+            Revelation[I, K] := Max(0, Revelation[I, K] - FOG_OF_WAR_DEC);
 
 
-        {//Remember what we have seen last
-        if Revelation[I, K].Visibility <= FOG_OF_WAR_MIN then
-        begin
-          Revelation[I, K].LastTerrain := gTerrain.Land[I, K].BaseLayer.Terrain;
+          {//Remember what we have seen last
+          if Revelation[I, K].Visibility <= FOG_OF_WAR_MIN then
+          begin
+            Revelation[I, K].LastTerrain := gTerrain.Land[I, K].BaseLayer.Terrain;
 
-        end;}
-      end;
+          end;}
+        end;
+  finally
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+  end;
 end;
 
 

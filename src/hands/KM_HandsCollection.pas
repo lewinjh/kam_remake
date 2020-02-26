@@ -993,7 +993,7 @@ procedure TKMHandsCollection.UpdateState(aTick: Cardinal);
 var
   I: Integer;
 begin
-  if DO_PERF_LOGGING then fPerfLog.EnterSection(psHands);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psHands);
 
   for I := 0 to Count - 1 do
   if (gGame <> nil) and not gGame.IsPaused and not gGame.IsExiting then
@@ -1004,7 +1004,7 @@ begin
 
   PlayerAnimals.UpdateState(aTick); //Animals don't have any AI yet
 
-  if DO_PERF_LOGGING then fPerfLog.LeaveSection(psHands);
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psHands);
 end;
 
 

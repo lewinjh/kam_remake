@@ -79,7 +79,7 @@ type
 
 implementation
 uses
-  KM_Game, KM_Render, KM_Resource;
+  KM_Game, KM_Render, KM_Resource, KM_PerfLog;
 
 type
   TAnimLayer = (alWater, alFalls, alSwamp);
@@ -641,7 +641,7 @@ begin
         begin
           tX := K + fClipRect.Left;
           tY := I + fClipRect.Top;
-          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+          if True {TileHasToBeRendered(I*K = 0,tX,tY,aFow)} then // Do not render tiles fully covered by FOW
             for L := 0 to Land[tY,tX].LayersCnt - 1 do
             begin
               with Land[tY,tX] do
@@ -741,7 +741,7 @@ const
     (250,1), (252,2), (252,1), (254,0));
 var Road, ID, Rot: Byte;
 begin
-  if TileHasToBeRendered(False,pX,pY,aFow) then
+  if True {TileHasToBeRendered(False,pX,pY,aFow)} then
   begin
     case gTerrain.Land[pY, pX].TileOverlay of
       toDig1:  RenderTile(249, pX, pY, 0, DoHighlight, HighlightColor);
@@ -797,7 +797,7 @@ begin
     for I := fClipRect.Top to fClipRect.Bottom do
       for K := fClipRect.Left to fClipRect.Right do
       begin
-        if TileHasToBeRendered(False,K,I,aFow) then
+        if True {TileHasToBeRendered(False,K,I,aFow)} then
         begin
           if Land[I,K].FenceSide and 1 = 1 then 
             RenderFence(Land[I,K].Fence, dirN, K, I);
@@ -1126,20 +1126,34 @@ begin
   //VBO has proper vertice coords only for Light/Shadow
   //it cant handle 3D yet and because of FOW leaves terrain revealed, which is an exploit in MP
   //Thus we allow VBO only in 2D
-  fUseVBO := DoUseVBO;
+  fUseVBO := SHOW_UIDs;//DoUseVBO;
 
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psUpdateVBO);
   UpdateVBO(aAnimStep, aFOW);
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psUpdateVBO);
 
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoTiles);
   DoTiles(aFOW);
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoTiles);
   //It was 'unlit water goes above lit sand'
   //But there is no big difference there, that is why, to make possible transitions with water,
   //Water was put before DoLighting
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoWater);
   DoWater(aAnimStep, aFOW);
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoWater);
   //TileLayers after water, as water with animation is always base layer
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoTilesLayers);
   DoTilesLayers(aFOW);
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoTilesLayers);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoOverlays);
   DoOverlays(aFOW);
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoOverlays);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoLighting);
   DoLighting(aFOW);
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoLighting);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoShadows);
   DoShadows(aFOW);
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoShadows);
 end;
 
 
