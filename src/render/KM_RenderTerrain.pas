@@ -22,6 +22,12 @@ type
     X, Y, Z, UAnim, VAnim: Single;
   end;
 
+  TTileVerticeExtArray = array of TTileVerticeExt;
+
+  TTileFowVerticeArray = array of TTileFowVertice;
+
+  TTileVerticeArray = array of TTileVertice;
+
   //Render terrain without sprites
   TRenderTerrain = class
   private
@@ -29,13 +35,13 @@ type
     fTextG: GLuint; //Shading gradient for lighting
     fTextB: GLuint; //Contrast BW for FOW over color-coder
     fUseVBO: Boolean; //Wherever to render terrain through VBO (faster but needs GL1.5) or DrawCalls (slower but needs only GL1.1)
-    fTilesVtx: array of TTileVerticeExt; //Vertice cache for tiles
+    fTilesVtx: TTileVerticeExtArray; //Vertice cache for tiles
     fTilesInd: array of Integer;      //Indexes for tiles array
     fTilesLayersVtx: array of TTileVertice; //Vertice cache for tiles
     fTilesLayersInd: array of Integer;      //Indexes for tiles array
-    fAnimTilesVtx: array of TTileVertice; //Vertice cache for tiles animations (water/falls/swamp)
+    fAnimTilesVtx: TTileVerticeArray; //Vertice cache for tiles animations (water/falls/swamp)
     fAnimTilesInd: array of Integer;          //Indexes for array tiles animation array
-    fTilesFowVtx: array of TTileFowVertice; //Vertice cache for tiles
+    fTilesFowVtx: TTileFowVerticeArray; //Vertice cache for tiles
     fTilesFowInd: array of Integer;      //Indexes for tiles array
     fVtxTilesShd: GLUint;
     fIndTilesShd: GLUint;
@@ -47,6 +53,7 @@ type
     fIndTilesFowShd: GLUint;
     fTileUVLookup: array [0..TILES_CNT-1, 0..3] of TUVRect;
     fLastBindVBOArrayType: TVBOArrayType;
+//    function TileHasToBeRendered(IsFirst: Boolean; aTX,aTY: Word; aFOW: TKMFogOfWarCommon): Boolean;
     function GetTileUV(Index: Word; Rot: Byte): TUVRect;
     procedure BindVBOArray(aVBOArrayType: TVBOArrayType);
     procedure UpdateVBO(aAnimStep: Integer; aFOW: TKMFogOfWarCommon);
@@ -209,7 +216,7 @@ begin
 end;
 
 
-function IsWaterAnimTerId(aTexOffset, aTerId: Word): Boolean;
+function IsWaterAnimTerId(aTexOffset, aTerId: Word): Boolean; inline;
 var
   FullTerId: Integer;
 begin
@@ -229,19 +236,20 @@ begin
 end;
 
 
-function TileHasToBeRendered(IsFirst: Boolean; aTX,aTY: Word; aFOW: TKMFogOfWarCommon): Boolean;
-begin
-  // We have to render at least 1 tile (otherwise smth wrong with gl contex and all UI and other sprites are not rendered at all
-  // so lets take the 1st tile
-  Result := IsFirst or (aFOW.CheckTileRenderRev(aTX,aTY) > FOG_OF_WAR_MIN);
-end;
+//function TileHasToBeRendered(IsFirst: Boolean; aTX,aTY: Word; aFOW: TKMFogOfWarCommon): Boolean; inline;
+//begin
+//  // We have to render at least 1 tile (otherwise smth wrong with gl contex and all UI and other sprites are not rendered at all
+//  // so lets take the 1st tile
+//  Result := True;//IsFirst or (aFOW.CheckTileRenderRev(aTX,aTY) > FOG_OF_WAR_MIN);
+//end;
 
 
 procedure TRenderTerrain.UpdateVBO(aAnimStep: Integer; aFOW: TKMFogOfWarCommon);
 var
   Fog: PKMByte2Array;
 
-  procedure SetTileVertexExt(aH: Integer; aTX, aTY: Word; aIsBottomRow: Boolean; aUTile, aVTile: Single);
+  procedure SetTileVertexExt(fTilesVtx: TTileVerticeExtArray; aH: Integer; aTX, aTY: Word;
+                             aIsBottomRow: Boolean; aUTile, aVTile: Single); inline;
   begin
     with gTerrain do
     begin
@@ -255,7 +263,7 @@ var
     end;
   end;
 
-  procedure SetTileFowVertex(aF: Integer; aTX, aTY: Word; aIsBottomRow: Boolean);
+  procedure SetTileFowVertex(fTilesFowVtx: TTileFowVerticeArray; Fog: PKMByte2Array; aF: Integer; aTX, aTY: Word; aIsBottomRow: Boolean); inline;
   begin
     fTilesFowVtx[aF].X := aTX;
     fTilesFowVtx[aF].Y := aTY - gTerrain.Land[aTY+1, aTX+1].Height / CELL_HEIGHT_DIV;
@@ -266,7 +274,7 @@ var
       fTilesFowVtx[aF].UFow := 255;
   end;
 
-  procedure SetTileVertex(var aTilesVtxArr: array of TTileVertice; aQ: Integer; aTX, aTY: Word; aIsBottomRow: Boolean; aUAnimTile, aVAnimTile: Single);
+  procedure SetTileVertex(var aTilesVtxArr: TTileVerticeArray; aQ: Integer; aTX, aTY: Word; aIsBottomRow: Boolean; aUAnimTile, aVAnimTile: Single); inline;
   begin
     with gTerrain do
     begin
@@ -310,7 +318,7 @@ var
   end;
 
 var
-  I,J,K,KP,KF,H,F,Q,P,L,TilesCnt,FowCnt,TilesLayersCnt,AnimCnt: Integer;
+  I,J,K,KP,KF,H,F,Q,P,L,Buf,TilesCnt,FowCnt,TilesLayersCnt,AnimCnt: Integer;
   SizeX, SizeY: Word;
   tX, tY: Word;
   TexTileC: TUVRect;
@@ -347,7 +355,7 @@ begin
 
   SetLength(fTilesVtx, (SizeX + 1) * 4 * (SizeY + 1));
   SetLength(fTilesFowVtx, (SizeX + 1) * 4 * (SizeY + 1));
-  SetLength(fTilesLayersVtx, (SizeX + 1) * 4 * 3 * (SizeY + 1));
+//  SetLength(fTilesLayersVtx, (SizeX + 1) * 4 * 3 * (SizeY + 1));
   SetLength(fAnimTilesVtx, (SizeX + 1) * 4 * (SizeY + 1));
   with gTerrain do
     if (MapX > 0) and (MapY > 0) then
@@ -357,40 +365,40 @@ begin
           tX := J + fClipRect.Left;
           tY := I + fClipRect.Top;
 
-          if TileHasToBeRendered(I*J = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
-          begin
+//          if TileHasToBeRendered(I*J = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+//          begin
             TexTileC := fTileUVLookup[Land[tY, tX].BaseLayer.Terrain, Land[tY, tX].BaseLayer.Rotation mod 4];
 
             //Fill Tile vertices array
-            SetTileVertexExt(H,   tX-1, tY-1, False, TexTileC[1][1], TexTileC[1][2]);
-            SetTileVertexExt(H+1, tX-1, tY,   True,  TexTileC[2][1], TexTileC[2][2]);
-            SetTileVertexExt(H+2, tX,   tY,   True,  TexTileC[3][1], TexTileC[3][2]);
-            SetTileVertexExt(H+3, tX,   tY-1, False, TexTileC[4][1], TexTileC[4][2]);
+            SetTileVertexExt(fTilesVtx, H,   tX-1, tY-1, False, TexTileC[1][1], TexTileC[1][2]);
+            SetTileVertexExt(fTilesVtx, H+1, tX-1, tY,   True,  TexTileC[2][1], TexTileC[2][2]);
+            SetTileVertexExt(fTilesVtx, H+2, tX,   tY,   True,  TexTileC[3][1], TexTileC[3][2]);
+            SetTileVertexExt(fTilesVtx, H+3, tX,   tY-1, False, TexTileC[4][1], TexTileC[4][2]);
             H := H + 4;
 
-            if Land[tY, tX].LayersCnt > 0 then
-              for L := 0 to Land[tY, tX].LayersCnt - 1 do
-              begin
-                TexTileC := GetTileUV(Land[tY,tX].Layer[L].Terrain, Land[TY,TX].Layer[L].Rotation mod 4);
-
-                //Fill Tile vertices array
-                SetTileVertex(fTilesLayersVtx, P,   tX-1, tY-1, False, TexTileC[1][1], TexTileC[1][2]);
-                SetTileVertex(fTilesLayersVtx, P+1, tX-1, tY,   True,  TexTileC[2][1], TexTileC[2][2]);
-                SetTileVertex(fTilesLayersVtx, P+2, tX,   tY,   True,  TexTileC[3][1], TexTileC[3][2]);
-                SetTileVertex(fTilesLayersVtx, P+3, tX,   tY-1, False, TexTileC[4][1], TexTileC[4][2]);
-                P := P + 4;
-              end;
-          end;
+//            if Land[tY, tX].LayersCnt > 0 then
+//              for L := 0 to Land[tY, tX].LayersCnt - 1 do
+//              begin
+//                TexTileC := GetTileUV(Land[tY,tX].Layer[L].Terrain, Land[TY,TX].Layer[L].Rotation mod 4);
+//
+//                //Fill Tile vertices array
+//                SetTileVertex(fTilesLayersVtx, P,   tX-1, tY-1, False, TexTileC[1][1], TexTileC[1][2]);
+//                SetTileVertex(fTilesLayersVtx, P+1, tX-1, tY,   True,  TexTileC[2][1], TexTileC[2][2]);
+//                SetTileVertex(fTilesLayersVtx, P+2, tX,   tY,   True,  TexTileC[3][1], TexTileC[3][2]);
+//                SetTileVertex(fTilesLayersVtx, P+3, tX,   tY-1, False, TexTileC[4][1], TexTileC[4][2]);
+//                P := P + 4;
+//              end;
+//          end;
 
           // Always set FOW
-          SetTileFowVertex(F,   tX-1, tY-1, False);
-          SetTileFowVertex(F+1, tX-1, tY,   True);
-          SetTileFowVertex(F+2, tX,   tY,   True);
-          SetTileFowVertex(F+3, tX,   tY-1, False);
+          SetTileFowVertex(fTilesFowVtx, Fog, F,   tX-1, tY-1, False);
+          SetTileFowVertex(fTilesFowVtx, Fog, F+1, tX-1, tY,   True);
+          SetTileFowVertex(fTilesFowVtx, Fog, F+2, tX,   tY,   True);
+          SetTileFowVertex(fTilesFowVtx, Fog, F+3, tX,   tY-1, False);
           F := F + 4;
 
           //Fill tiles animation vertices array
-          if (aFOW.CheckTileRenderRev(tX,tY) > FOG_OF_WAR_ACT) then // Render animation only if tile is not covered by FOW
+//          if (aFOW.CheckTileRenderRev(tX,tY) > FOG_OF_WAR_ACT) then // Render animation only if tile is not covered by FOW
             if not TryAddAnimTex(Q, tX, tY, TexOffsetWater) then  //every tile can have only 1 animation
               if not TryAddAnimTex(Q, tX, tY, TexOffsetFalls) then
                 TryAddAnimTex(Q, tX, tY, TexOffsetSwamp);
@@ -399,7 +407,7 @@ begin
   //Cut vertices arrays to actual size
   SetLength(fTilesVtx, H);
   SetLength(fTilesFowVtx, F);
-  SetLength(fTilesLayersVtx, P);
+//  SetLength(fTilesLayersVtx, P);
   SetLength(fAnimTilesVtx, Q);
 
   TilesCnt := H div 4;
@@ -414,46 +422,48 @@ begin
   KF := 0;
   SetLength(fTilesInd, TilesCnt*6);
   SetLength(fTilesFowInd, FowCnt*6);
-  SetLength(fTileslayersInd, TilesLayersCnt*6);
+//  SetLength(fTileslayersInd, TilesLayersCnt*6);
   for I := 0 to SizeY do
     for J := 0 to SizeX do
     begin
-      tX := J + fClipRect.Left;
-      tY := I + fClipRect.Top;
+//      tX := J + fClipRect.Left;
+//      tY := I + fClipRect.Top;
       // Set FOW indices
-      fTilesFowInd[F+0] := KF shl 2; // shl 2 = *4
-      fTilesFowInd[F+1] := (KF shl 2) + 1;
-      fTilesFowInd[F+2] := (KF shl 2) + 2;
-      fTilesFowInd[F+3] := (KF shl 2);
-      fTilesFowInd[F+4] := (KF shl 2) + 3;
-      fTilesFowInd[F+5] := (KF shl 2) + 2;
+      Buf := KF shl 2;
+      fTilesFowInd[F+0] := Buf; // shl 2 = *4
+      fTilesFowInd[F+1] := Buf + 1;
+      fTilesFowInd[F+2] := Buf + 2;
+      fTilesFowInd[F+3] := Buf;
+      fTilesFowInd[F+4] := Buf + 3;
+      fTilesFowInd[F+5] := Buf + 2;
       F := F + 6;
       Inc(KF);
-      if TileHasToBeRendered(I*J = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
-      begin
+//      if TileHasToBeRendered(I*J = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+//      begin
         // Set Tile terrain indices
-        fTilesInd[H+0] := K shl 2; // shl 2 = *4
-        fTilesInd[H+1] := (K shl 2) + 1;
-        fTilesInd[H+2] := (K shl 2) + 2;
-        fTilesInd[H+3] := (K shl 2);
-        fTilesInd[H+4] := (K shl 2) + 3;
-        fTilesInd[H+5] := (K shl 2) + 2;
+        Buf := K shl 2;
+        fTilesInd[H+0] := Buf; // shl 2 = *4
+        fTilesInd[H+1] := Buf + 1;
+        fTilesInd[H+2] := Buf + 2;
+        fTilesInd[H+3] := Buf;
+        fTilesInd[H+4] := Buf + 3;
+        fTilesInd[H+5] := Buf + 2;
         H := H + 6;
         Inc(K);
-        if gTerrain.Land[tY, tX].LayersCnt > 0 then
-          // Set Tile layers terrain indices
-          for L := 0 to gTerrain.Land[tY, tX].LayersCnt - 1 do
-          begin
-            fTilesLayersInd[P+0] := KP shl 2; // shl 2 = *4
-            fTilesLayersInd[P+1] := (KP shl 2) + 1;
-            fTilesLayersInd[P+2] := (KP shl 2) + 2;
-            fTilesLayersInd[P+3] := (KP shl 2);
-            fTilesLayersInd[P+4] := (KP shl 2) + 3;
-            fTilesLayersInd[P+5] := (KP shl 2) + 2;
-            P := P + 6;
-            Inc(KP);
-          end;
-      end;
+//        if gTerrain.Land[tY, tX].LayersCnt > 0 then
+//          // Set Tile layers terrain indices
+//          for L := 0 to gTerrain.Land[tY, tX].LayersCnt - 1 do
+//          begin
+//            fTilesLayersInd[P+0] := KP shl 2; // shl 2 = *4
+//            fTilesLayersInd[P+1] := (KP shl 2) + 1;
+//            fTilesLayersInd[P+2] := (KP shl 2) + 2;
+//            fTilesLayersInd[P+3] := (KP shl 2);
+//            fTilesLayersInd[P+4] := (KP shl 2) + 3;
+//            fTilesLayersInd[P+5] := (KP shl 2) + 2;
+//            P := P + 6;
+//            Inc(KP);
+//          end;
+//      end;
     end;
 
   AnimCnt := Q div 4;
@@ -463,19 +473,20 @@ begin
   SetLength(fAnimTilesInd, AnimCnt*6);
   while I < AnimCnt do
   begin
-    fAnimTilesInd[H+0] := I shl 2; // shl 2 = *4
-    fAnimTilesInd[H+1] := (I shl 2) + 1;
-    fAnimTilesInd[H+2] := (I shl 2) + 2;
-    fAnimTilesInd[H+3] := (I shl 2);
-    fAnimTilesInd[H+4] := (I shl 2) + 3;
-    fAnimTilesInd[H+5] := (I shl 2) + 2;
+    Buf := I shl 2;
+    fAnimTilesInd[H+0] := Buf; // shl 2 = *4
+    fAnimTilesInd[H+1] := Buf + 1;
+    fAnimTilesInd[H+2] := Buf + 2;
+    fAnimTilesInd[H+3] := Buf;
+    fAnimTilesInd[H+4] := Buf + 3;
+    fAnimTilesInd[H+5] := Buf + 2;
     H := H + 6;
     Inc(I);
   end;
 end;
 
 
-procedure RenderQuadTexture(var TexC: TUVRect; tX,tY: Word);
+procedure RenderQuadTexture(var TexC: TUVRect; tX,tY: Word); inline;
 begin
   with gTerrain do
     if RENDER_3D then
@@ -493,7 +504,7 @@ begin
 end;
 
 
-procedure RenderQuadTextureBlended(var TexC: TUVRect; tX,tY: Word; aCorners: TKMByteSet; aBlendingLevel: Byte);
+procedure RenderQuadTextureBlended(var TexC: TUVRect; tX,tY: Word; aCorners: TKMByteSet; aBlendingLevel: Byte); inline;
 var
   BlendFactor: Single;
 begin
@@ -576,8 +587,8 @@ begin
         begin
           tX := K + fClipRect.Left;
           tY := I + fClipRect.Top;
-          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
-          begin
+//          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+//          begin
             with Land[tY,tX] do
             begin
               TRender.BindTexture(gGFXData[rxTiles, BaseLayer.Terrain+1].Tex.ID);
@@ -587,7 +598,7 @@ begin
 
             RenderQuadTexture(TexC, tX, tY);
             glEnd;
-          end;
+//          end;
         end;
   end;
 end;
@@ -641,7 +652,7 @@ begin
         begin
           tX := K + fClipRect.Left;
           tY := I + fClipRect.Top;
-          if True {TileHasToBeRendered(I*K = 0,tX,tY,aFow)} then // Do not render tiles fully covered by FOW
+//          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
             for L := 0 to Land[tY,tX].LayersCnt - 1 do
             begin
               with Land[tY,tX] do
@@ -741,8 +752,8 @@ const
     (250,1), (252,2), (252,1), (254,0));
 var Road, ID, Rot: Byte;
 begin
-  if True {TileHasToBeRendered(False,pX,pY,aFow)} then
-  begin
+//  if TileHasToBeRendered(False,pX,pY,aFow) then
+//  begin
     case gTerrain.Land[pY, pX].TileOverlay of
       toDig1:  RenderTile(249, pX, pY, 0, DoHighlight, HighlightColor);
       toDig2:  RenderTile(251, pX, pY, 0, DoHighlight, HighlightColor);
@@ -769,7 +780,7 @@ begin
        1: RenderTile(gTerrain.Land[pY, pX].CornOrWineTerrain, pX, pY, 0, DoHighlight, HighlightColor);
        2: RenderTile(55, pX, pY, 0, DoHighlight, HighlightColor);
      end;
-  end;
+//  end;
 end;
 
 
@@ -797,9 +808,9 @@ begin
     for I := fClipRect.Top to fClipRect.Bottom do
       for K := fClipRect.Left to fClipRect.Right do
       begin
-        if True {TileHasToBeRendered(False,K,I,aFow)} then
-        begin
-          if Land[I,K].FenceSide and 1 = 1 then 
+//        if TileHasToBeRendered(False,K,I,aFow) then
+//        begin
+          if Land[I,K].FenceSide and 1 = 1 then
             RenderFence(Land[I,K].Fence, dirN, K, I);
           if Land[I,K].FenceSide and 2 = 2 then 
             RenderFence(Land[I,K].Fence, dirE, K, I);
@@ -807,7 +818,7 @@ begin
             RenderFence(Land[I,K].Fence, dirW, K, I);
           if Land[I,K].FenceSide and 8 = 8 then 
             RenderFence(Land[I,K].Fence, dirS, K, I);
-        end;
+//        end;
       end;
 end;
 
@@ -865,8 +876,8 @@ begin
         begin
           tX := K + fClipRect.Left;
           tY := I + fClipRect.Top;
-          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
-          begin
+//          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+//          begin
             if RENDER_3D then
             begin
               glBegin(GL_TRIANGLE_FAN);
@@ -883,7 +894,7 @@ begin
                 glTexCoord1f(Land[  tY, tX+1].Light); glVertex3f(  tX, tY-1 - Land[  tY, tX+1].Height / CELL_HEIGHT_DIV, tY-1);
               glEnd;
             end;
-          end;
+//          end;
         end;
   end;
 end;
@@ -927,8 +938,8 @@ begin
         begin
           tX := K + fClipRect.Left;
           tY := I + fClipRect.Top;
-          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
-          begin
+//          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+//          begin
             if RENDER_3D then
             begin
               glBegin(GL_TRIANGLE_FAN);
@@ -945,7 +956,7 @@ begin
                 glTexCoord1f(-Land[  tY, tX+1].Light); glVertex3f(  tX, tY-1 - Land[  tY, tX+1].Height / CELL_HEIGHT_DIV, tY-1);
               glEnd;
             end;
-          end;
+//          end;
         end;
   end;
 
