@@ -176,6 +176,7 @@ end;
 
 procedure TKMPerfLog.SaveToFile(const aFilename: UnicodeString);
 var
+  I: Integer;
   K: TPerfSection;
   S: TStringList;
   TickKey: Cardinal;
@@ -187,6 +188,8 @@ var
 
   SectsArray: TArray<TPerfSection>;
   TicksArray: TArray<Cardinal>;
+
+  Total: array[TPerfSection] of Int64;
 begin
   ForceDirectories(ExtractFilePath(aFilename));
 
@@ -202,13 +205,16 @@ begin
     if K in SKIP_SECTION then
       Continue;
 
+    Total[K] := 0;
     Str := Str + Format('%' + IntToStr(SECT_W) + 's', [SectionName[K]]);
   end;
   S.Append(Str);
 
 
+  I := 0;
   for TickKey in TicksArray do
   begin
+    Inc(I);
     SectDict := fTickTimes.Items[TickKey];
 
     SectsArray := SectDict.Keys.ToArray;
@@ -227,12 +233,25 @@ begin
 //      end;
 
       Str := Str + Format('%' + IntToStr(SECT_W) + 'd', [SectDict.Items[SectKey]]);
+
+      if I < Length(TicksArray) then
+        Total[SectKey] := Total[SectKey] + SectDict.Items[SectKey];
     end;
 
     if not FastTick then
       S.Append(Str);
   end;
 
+  S.Append('AVERAGE');
+  Str := '';
+  for K := Low(TPerfSection) to High(TPerfSection) do
+  begin
+    if K in SKIP_SECTION then
+      Continue;
+
+    Str := Str + Format('%' + IntToStr(SECT_W) + 'd', [Round(Total[K] / Length(TicksArray))]);
+  end;
+  S.Append(Str);
 
 //  for K := Low(TPerfSection) to High(TPerfSection) do
 //  begin
