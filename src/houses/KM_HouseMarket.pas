@@ -42,6 +42,8 @@ type
     function ShouldAbandonDeliveryFrom(aWareType: TKMWareType; aImmidiateCheck: Boolean = False): Boolean; override;
     function ShouldAbandonDeliveryTo(aWareType: TKMWareType): Boolean; override;
 
+    procedure DecResourceDelivery(aWare: TKMWareType); override;
+
     function AllowedToTrade(aRes: TKMWareType): Boolean;
     function TradeInProgress: Boolean;
     function GetResTotal(aWare: TKMWareType): Word; overload;
@@ -142,7 +144,8 @@ end;
 
 
 procedure TKMHouseMarket.ResAddToIn(aResource: TKMWareType; aCount: Integer = 1; aFromScript: Boolean = False);
-var ResRequired: Integer;
+var
+  ResRequired, OrdersToDo: Integer;
 begin
   //If user cancelled the exchange (or began new one with different resources already)
   //then incoming resourced should be added to Offer list immediately
@@ -156,8 +159,9 @@ begin
     ResRequired := fTradeAmount*RatioFrom - (fMarketResIn[aResource]+fMarketDeliveryCount[aResource]);
     if ResRequired > 0 then
     begin
-      Inc(fMarketDeliveryCount[aResource], Min(aCount, ResRequired));
-      gHands[fOwner].Deliveries.Queue.AddDemand(Self, nil, fResFrom, Min(aCount, ResRequired), dtOnce, diNorm);
+      OrdersToDo := Min(aCount, ResRequired);
+      Inc(fMarketDeliveryCount[aResource], OrdersToDo);
+      gHands[fOwner].Deliveries.Queue.AddDemand(Self, nil, fResFrom, OrdersToDo, dtOnce, diNorm);
     end;
     AttemptExchange;
   end
@@ -347,13 +351,19 @@ begin
 end;
 
 
+procedure TKMHouseMarket.DecResourceDelivery(aWare: TKMWareType);
+begin
+  fMarketDeliveryCount[aWare] := Max(0, fMarketDeliveryCount[aWare] - 1);
+end;
+
+
 //Player has changed the amount of order
 procedure TKMHouseMarket.SetResOrder(aId: Byte; aValue: Integer);
 const
   //Maximum number of Demands we can place at once (stops the delivery queue from becoming clogged with 1500 items)
   MAX_RES_ORDERED = 10;
 var
-  ResRequired, OrdersAllowed, OrdersRemoved: Integer;
+  ResRequired, OrdersAllowed, OrdersRemoved, OrderToDo: Integer;
 begin
   if (fResFrom = wtNone) or (fResTo = wtNone) or (fResFrom = fResTo) then Exit;
 
@@ -387,8 +397,9 @@ begin
   //Order as many as we can within our limit
   if (ResRequired > 0) and (OrdersAllowed > 0) then
   begin
-    Inc(fMarketDeliveryCount[fResFrom], Min(ResRequired,OrdersAllowed));
-    gHands[fOwner].Deliveries.Queue.AddDemand(Self, nil, fResFrom, Min(ResRequired,OrdersAllowed), dtOnce, diNorm)
+    OrderToDo := Min(ResRequired, OrdersAllowed);
+    Inc(fMarketDeliveryCount[fResFrom], OrderToDo);
+    gHands[fOwner].Deliveries.Queue.AddDemand(Self, nil, fResFrom, OrderToDo, dtOnce, diNorm)
   end
   else
     //There are too many resources ordered, so remove as many as we can from the delivery list (some will be being performed)

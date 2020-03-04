@@ -52,6 +52,7 @@ type
   private
     fErrorString: TKMScriptErrorMessage; //Info about found mistakes (Unicode, can be localized later on)
     fWarningsString: TKMScriptErrorMessage;
+    fHintsString: TKMScriptErrorMessage;
 
     fHasErrorOccured: Boolean; //Has runtime error occurred? (only display first error)
     fScriptLogFile: UnicodeString;
@@ -70,8 +71,10 @@ type
                                       const aDetailedErrorString: UnicodeString = '');
     function HasErrors: Boolean;
     function HasWarnings: Boolean;
+    function HasHints: Boolean;
     procedure AppendError(aError: TKMScriptErrorMessage);
     procedure AppendWarning(const aWarning: TKMScriptErrorMessage);
+    procedure AppendHint(const aHint: TKMScriptErrorMessage);
     procedure AppendErrorStr(const aErrorString: String; const aDetailedErrorString: String = '');
     procedure AppendWarningStr(const aWarningString: String; const aDetailedWarningString: String = '');
     procedure HandleErrors;
@@ -87,6 +90,7 @@ type
     fValidationIssues: TScriptValidatorResult;
 
     fCustomScriptParams: TKMCustomScriptParamDataArray;
+    fPreProcessor: TPSPreProcessor;
 
     function GetCustomScriptParamData(aParam: TKMCustomScriptParam): TKMCustomScriptParamData;
 
@@ -137,8 +141,8 @@ type
     procedure LoadVar(LoadStream: TKMemoryStream; Src: Pointer; aType: TPSTypeRec);
 
     function GetScriptFilesInfo: TKMScriptFilesCollection;
-    function GetCodeLine(aRowNum: Cardinal): AnsiString;
-    function FindCodeLine(aRowNumber: Integer; out aFileNamesArr: TKMStringArray; out aRowsArr: TIntegerArray): Integer;
+//    function GetCodeLine(aRowNum: Cardinal): AnsiString;
+//    function FindCodeLine(aRowNumber: Integer; out aFileNamesArr: TKMStringArray; out aRowsArr: TIntegerArray): Integer;
     procedure RecreateValidationIssues;
     constructor Create(aOnScriptError: TUnicodeStringEvent); // Scripting has to be created via special TKMScriptingCreator
   public
@@ -150,12 +154,12 @@ type
     procedure ScriptOnUseVariable(Sender: TPSPascalCompiler; VarType: TPSVariableType; VarNo: Longint; ProcNo, Position: Cardinal; const PropData: tbtString);
     function ScriptOnExportCheck(Sender: TPSPascalCompiler; Proc: TPSInternalProcedure; const ProcDecl: AnsiString): Boolean;
 
-    property ScriptCode: AnsiString read fScriptCode;
+    //property ScriptCode: AnsiString read fScriptCode;
     property ScriptFilesInfo: TKMScriptFilesCollection read GetScriptFilesInfo;
     property PreProcessor: TKMScriptingPreProcessor read fPreProcessor;
 
     function GetErrorMessage(aErrorMsg: TPSPascalCompilerMessage): TKMScriptErrorMessage; overload;
-    function GetErrorMessage(const aErrorType, aShortErrorDescription: String; aRow, aCol: Integer): TKMScriptErrorMessage; overload;
+    function GetErrorMessage(const aErrorType, aShortErrorDescription, aModule: String; aRow, aCol, aPos: Integer): TKMScriptErrorMessage; overload;
 
     property ValidationIssues: TScriptValidatorResult read fValidationIssues;
     procedure LoadFromFile(const aFileName, aCampaignDataTypeFile: UnicodeString; aCampaignData: TKMemoryStreamBinary);
@@ -256,13 +260,13 @@ begin
   fIDCache := TKMScriptingIdCache.Create;
 
   // Global object to get events
-  gScriptEvents := TKMScriptEvents.Create(fExec, fIDCache);
+  fErrorHandler := TKMScriptErrorHandler.Create(aOnScriptError);
+  fPreProcessor := TKMScriptingPreProcessor.Create(aOnScriptError, fErrorHandler); //Use same error handler for PreProcessor and Scripting
+
+  gScriptEvents := TKMScriptEvents.Create(fExec, fPreProcessor.fPreProcessor, fIDCache);
   fStates := TKMScriptStates.Create(fIDCache);
   fActions := TKMScriptActions.Create(fIDCache);
   fUtils := TKMScriptUtils.Create(fIDCache);
-
-  fErrorHandler := TKMScriptErrorHandler.Create(aOnScriptError);
-  fPreProcessor := TKMScriptingPreProcessor.Create(aOnScriptError, fErrorHandler); //Use same error handler for PreProcessor and Scripting
 
   gScriptEvents.OnScriptError := fErrorHandler.HandleScriptErrorString;
   fStates.OnScriptError := fErrorHandler.HandleScriptErrorString;
@@ -921,12 +925,17 @@ begin
 
     compileSuccess := Compiler.Compile(fScriptCode); // Compile the Pascal script into bytecode
 
+    fPreProcessor.fPreProcessor.AdjustMessages(Compiler);
+
     for I := 0 to Compiler.MsgCount - 1 do
     begin
       Msg := Compiler.Msg[I];
 
       if Msg.ErrorType = 'Hint' then
-        fValidationIssues.AddHint(Msg.Row, Msg.Col, Msg.Param, Msg.ShortMessageToString)
+      begin
+        fErrorHandler.AppendHint(GetErrorMessage(Msg));
+        fValidationIssues.AddHint(Msg.Row, Msg.Col, Msg.Param, Msg.ShortMessageToString);
+      end
       else if Msg.ErrorType = 'Warning' then
       begin
         fErrorHandler.AppendWarning(GetErrorMessage(Msg));
@@ -1684,85 +1693,52 @@ begin
 end;
 
 
-function TKMScripting.GetCodeLine(aRowNum: Cardinal): AnsiString;
-var Strings: TStringList;
-begin
-  Strings := TStringList.Create;
-  Strings.Text := fScriptCode;
-  Result := AnsiString(Strings[aRowNum - 1]);
-  Strings.Free;
-end;
+//function TKMScripting.GetCodeLine(aRowNum: Cardinal): AnsiString;
+//var Strings: TStringList;
+//begin
+//  Strings := TStringList.Create;
+//  Strings.Text := fScriptCode;
+//  Result := AnsiString(Strings[aRowNum - 1]);
+//  Strings.Free;
+//end;
 
 
-function TKMScripting.FindCodeLine(aRowNumber: Integer; out aFileNamesArr: TKMStringArray; out aRowsArr: TIntegerArray): Integer;
-begin
-  Result := fPreProcessor.fScriptFilesInfo.FindCodeLine(GetCodeLine(aRowNumber), aFileNamesArr, aRowsArr);
-end;
+//function TKMScripting.FindCodeLine(aRowNumber: Integer; out aFileNamesArr: TKMStringArray; out aRowsArr: TIntegerArray): Integer;
+//begin
+//  Result := fPreProcessor.fScriptFilesInfo.FindCodeLine(GetCodeLine(aRowNumber), aFileNamesArr, aRowsArr);
+//end;
 
 
 function TKMScripting.GetErrorMessage(aErrorMsg: TPSPascalCompilerMessage): TKMScriptErrorMessage;
 begin
-  Result := GetErrorMessage(aErrorMsg.ErrorType, EolW + '[' + aErrorMsg.ErrorType + '] ' + aErrorMsg.ShortMessageToString + EolW, aErrorMsg.Row, aErrorMsg.Col);
+  Result := GetErrorMessage(aErrorMsg.ErrorType, EolW + '[' + aErrorMsg.ErrorType + '] ' + aErrorMsg.ShortMessageToString + EolW,
+                            aErrorMsg.ModuleName, aErrorMsg.Row, aErrorMsg.Col, aErrorMsg.Pos);
 end;
 
 
-function TKMScripting.GetErrorMessage(const aErrorType, aShortErrorDescription: String; aRow, aCol: Integer): TKMScriptErrorMessage;
-var I, CodeLinesFound: Integer;
-    FileNamesArr: TKMStringArray;
-    RowsArr: TIntegerArray;
-    ErrorMsg, DetailedErrorMsg, ErrorMsgTemplate, FirstError, ErrorTemplate: UnicodeString;
+function TKMScripting.GetErrorMessage(const aErrorType, aShortErrorDescription, aModule: String; aRow, aCol, aPos: Integer): TKMScriptErrorMessage;
+var
+  ErrorMsg: UnicodeString;
 begin
-  ErrorMsg := '';
-  ErrorTemplate := 'in ''%s'' at [%d:%d]';
-
-  // Most of the scripts probably will not use Include or Define directives.
-  // Then script code after pre-processing should be identical to original main script file
-  // That mean we do not need to find line of code by its text (which could be indefinite due to multiple code lines with the same text)
-  // But use aRow parameter instead
-  if not fPreProcessor.ScriptMightChangeAfterPreProcessing then
-    ErrorMsg := Format(ErrorTemplate, [ScriptFilesInfo.fMainFileInfo.FileName, aRow, aCol])
-  else
-  begin
-    //Try to find line of code in all script files (main file and included files)
-    CodeLinesFound := FindCodeLine(aRow, FileNamesArr, RowsArr);
-    case CodeLinesFound of
-      0:    ;
-      1:    ErrorMsg := Format(ErrorTemplate, [FileNamesArr[0], RowsArr[0], aCol]);
-      else  begin
-              // Its unlikely, but possible, if we find several lines with the same code. Lets show them all then
-              ErrorMsg := 'Actual ' + aErrorType + ' position couldn''t be recognised.' + EolW;
-              DetailedErrorMsg := ErrorMsg;
-              ErrorMsg := ErrorMsg + 'Check log for details. First position:' + EolW;
-              // Show first position in game message, while all others - in the chat
-              FirstError := Format(ErrorTemplate, [FileNamesArr[0], RowsArr[0], aCol]);
-              ErrorMsg := ErrorMsg + FirstError;
-              DetailedErrorMsg := DetailedErrorMsg + 'Possible positions: ' + EolW + FirstError;
-              // Other possible error positions are appended to detailed message
-              for I := 1 to CodeLinesFound - 1 do
-                DetailedErrorMsg := DetailedErrorMsg + EolW + Format(ErrorTemplate, [FileNamesArr[I], RowsArr[I], aCol]);
-            end;
-    end;
-  end;
-
-  ErrorMsgTemplate := aShortErrorDescription + '%s' + EolW;
+  ErrorMsg := Format(aShortErrorDescription + 'in ''%s'' at [%d:%d]' + EolW, [aModule, aRow, aCol]);
 
   // Show game message only for errors. Do not show it for hints or warnings.
   if aErrorType = 'Error' then
-    Result.GameMessage := Format(ErrorMsgTemplate, [ErrorMsg])
+    Result.GameMessage := ErrorMsg
   else
     Result.GameMessage := '';
 
-  if DetailedErrorMsg <> '' then
-    Result.LogMessage := Format(ErrorMsgTemplate, [DetailedErrorMsg])
-  else
-    Result.LogMessage := Format(ErrorMsgTemplate, [ErrorMsg]);
+   Result.LogMessage := ErrorMsg;
 end;
 
 
 {TKMScriptErrorHandler}
 constructor TKMScriptErrorHandler.Create(aOnScriptError: TUnicodeStringEvent);
 begin
+  inherited Create;
+
   fOnScriptError := aOnScriptError;
+  Clear;
 end;
 
 
@@ -1770,6 +1746,13 @@ procedure TKMScriptErrorHandler.AppendError(aError: TKMScriptErrorMessage);
 begin
   fErrorString.GameMessage := fErrorString.GameMessage + aError.GameMessage;
   fErrorString.LogMessage := fErrorString.LogMessage + aError.LogMessage;
+end;
+
+
+procedure TKMScriptErrorHandler.AppendHint(const aHint: TKMScriptErrorMessage);
+begin
+  fHintsString.GameMessage := fHintsString.GameMessage + aHint.GameMessage;
+  fHintsString.LogMessage := fHintsString.LogMessage + aHint.LogMessage;
 end;
 
 
@@ -1818,11 +1801,18 @@ begin
 end;
 
 
+function TKMScriptErrorHandler.HasHints: Boolean;
+begin
+  Result := fHintsString.GameMessage <> '';
+end;
+
+
 
 procedure TKMScriptErrorHandler.HandleErrors;
 begin
   HandleScriptError(seCompileError, AppendErrorPrefix('Script compile errors:' + EolW, fErrorString));
   HandleScriptError(seCompileWarning, AppendErrorPrefix('Script compile warnings:' + EolW, fWarningsString));
+  HandleScriptError(seCompileHint, AppendErrorPrefix('Script compile hints:' + EolW, fHintsString));
 end;
 
 
@@ -1832,6 +1822,8 @@ begin
   fErrorString.LogMessage := '';
   fWarningsString.GameMessage := '';
   fWarningsString.LogMessage := '';
+  fHintsString.GameMessage := '';
+  fHintsString.LogMessage := '';
 end;
 
 
@@ -1899,7 +1891,7 @@ begin
     //Only show the first message in-game to avoid spamming the player
     if not fHasErrorOccured and Assigned(fOnScriptError) then
       fOnScriptError('Error(s) have occured in the mission script. ' +
-                     'Please check the log file for further details. First error:||' + aErrorString);
+                     'Please check the log file for further details. First error:|' + aErrorString);
     fHasErrorOccured := True;
   end;
 end;
@@ -1925,6 +1917,11 @@ end;
 constructor TKMScriptingPreProcessor.Create(aOnScriptError: TUnicodeStringEvent; aErrorHandler: TKMScriptErrorHandler);
 begin
   inherited Create;
+
+  fPreProcessor := TPSPreProcessor.Create;
+  fPreProcessor.OnNeedFile := ScriptOnNeedFile;
+  fPreProcessor.OnProcessDirective := ScriptOnProcessDirective;
+
   fScriptFilesInfo := TKMScriptFilesCollection.Create;
 
   fErrorHandler := aErrorHandler;
@@ -1938,6 +1935,8 @@ begin
   //Error Handler could be destroyed already
   if fDestroyErrorHandler then
     FreeAndNil(fErrorHandler);
+
+  FreeAndNil(fPreProcessor);
   inherited;
 end;
 
@@ -1988,7 +1987,6 @@ end;
 
 function TKMScriptingPreProcessor.PreProcessFile(const aFileName: UnicodeString; var aScriptCode: AnsiString): Boolean;
 var
-  PreProcessor: TPSPreProcessor;
   MainScriptCode: AnsiString;
 begin
   Result := False;
@@ -2001,27 +1999,21 @@ begin
   end;
 
   MainScriptCode := ReadTextA(aFileName);
-  PreProcessor := TPSPreProcessor.Create;
+
+  fPreProcessor.MainFileName := AnsiString(aFileName);
+  fPreProcessor.MainFile := MainScriptCode;
+  BeforePreProcess(aFileName, MainScriptCode);
   try
-    PreProcessor.OnNeedFile := ScriptOnNeedFile;
-    PreProcessor.OnProcessDirective := ScriptOnProcessDirective;
-    PreProcessor.MainFileName := AnsiString(aFileName);
-    PreProcessor.MainFile := MainScriptCode;
-    BeforePreProcess(aFileName, MainScriptCode);
-    try
-      PreProcessor.PreProcess(PreProcessor.MainFileName, aScriptCode);
-      AfterPreProcess;
-      Result := True; // If PreProcess has been done succesfully
-    except
-      on E: Exception do
-      begin
-        fErrorHandler.HandleScriptErrorString(sePreprocessorError, 'Script preprocessing errors:' + EolW + E.Message);
-        if fValidationIssues <> nil then
-          fValidationIssues.AddError(0, 0, '', 'Script preprocessing errors:' + EolW + E.Message);
-      end;
+    fPreProcessor.PreProcess(fPreProcessor.MainFileName, aScriptCode);
+    AfterPreProcess;
+    Result := True; // If PreProcess has been done succesfully
+  except
+    on E: Exception do
+    begin
+      fErrorHandler.HandleScriptErrorString(sePreprocessorError, 'Script preprocessing errors:' + EolW + E.Message);
+      if fValidationIssues <> nil then
+        fValidationIssues.AddError(0, 0, '', 'Script preprocessing errors:' + EolW + E.Message);
     end;
-  finally
-    PreProcessor.Free;
   end;
 end;
 
@@ -2297,7 +2289,7 @@ begin
 
   S := ExtractFilePath(aCallingFileName);
   if S = '' then S := ExtractFilePath(ParamStr(0));
-  aFileName := AnsiString(S) + aFileName;
+  aFileName := AnsiString(S) + Trim(aFileName);
 
   FileExt := ExtractFileExt(aFileName);
   // Check included file extension
