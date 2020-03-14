@@ -85,7 +85,7 @@ uses
   {$IFDEF USE_MAD_EXCEPT} KM_Exceptions, {$ENDIF}
   SysUtils, StrUtils, Math, KromUtils,
   KM_GameApp,
-  KM_Log, KM_CommonUtils, KM_Defaults, KM_Points;
+  KM_Log, KM_CommonUtils, KM_Defaults, KM_Points, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 
 const
@@ -102,6 +102,10 @@ begin
   //Form created first will be on taskbar
   Application.CreateForm(TFormMain, fFormMain);
   Application.CreateForm(TFormLoading, fFormLoading);
+
+  gPerfLogs := TKMPerfLogs.Create([], True);
+  gPerfLogs.ShowForm( fFormMain.cpPerfLogs );
+
 end;
 
 
@@ -355,6 +359,7 @@ begin
   begin
     gGameApp.UpdateStateIdle(FrameTime);
     gGameApp.Render;
+//    gPerfLogs.Render(TOOLBAR_WIDTH, fFormMain.RenderArea.Width, fFormMain.RenderArea.Height);
   end;
 
   Done := False; //Repeats OnIdle asap without performing Form-specific idle code
@@ -570,8 +575,11 @@ end;
 
 procedure TKMMain.Render;
 begin
+
   if gGameApp <> nil then
     gGameApp.Render;
+
+
 end;
 
 

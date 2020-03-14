@@ -83,7 +83,7 @@ type
 
 implementation
 uses
-  KM_Units, KM_PerfLog, KM_Game;
+  KM_Units, KM_PerfLog, KM_Game, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 
 { TPathFinding }
@@ -120,7 +120,8 @@ end;
 function TPathFinding.Route_Make(const aLocA, aLocB: TKMPoint; aPass: TKMTerrainPassabilitySet; aDistance: Single;
                                  aTargetHouse: TKMHouse; NodeList: TKMPointList; aAvoidLocked: TKMPathAvoidLocked = palNoAvoid): Boolean;
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psPathfinding);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskPathfinding);
+  gPerfLogs.SectionEnter(psPathfinding, gGame.GameTick);
   try
     Result := False;
 
@@ -162,15 +163,17 @@ begin
         AddNoRouteAvoidLockedToCache;
     end;
   finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psPathfinding);
+    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskPathfinding);
   end;
+  gPerfLogs.SectionLeave(psPathfinding);
 end;
 
 
 //We are using Interaction Avoid mode (go around busy units)
 function TPathFinding.Route_MakeAvoid(const aLocA, aLocB: TKMPoint; aPass: TKMTerrainPassabilitySet; aDistance: Single; aTargetHouse: TKMHouse; NodeList: TKMPointList): Boolean;
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psPathfinding);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskPathfinding);
+  gPerfLogs.SectionEnter(psPathfinding, gGame.GameTick);
   try
     Result := False;
 
@@ -193,8 +196,9 @@ begin
       Result := True;
     end;
   finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psPathfinding);
+    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskPathfinding);
   end;
+  gPerfLogs.SectionLeave(psPathfinding);
 end;
 
 
@@ -202,7 +206,8 @@ end;
 function TPathFinding.Route_ReturnToWalkable(const aLocA, aLocB: TKMPoint; aTargetWalkConnect: TKMWalkConnect;
                                              aTargetNetwork: Byte; aPass: TKMTerrainPassabilitySet; NodeList: TKMPointList): Boolean;
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psPathfinding);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskPathfinding);
+  gPerfLogs.SectionEnter(psPathfinding, gGame.GameTick);
   try
     Result := False;
 
@@ -223,8 +228,9 @@ begin
     end else
       NodeList.Clear;
   finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psPathfinding);
+    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskPathfinding);
   end;
+  gPerfLogs.SectionLeave(psPathfinding);
 end;
 
 
@@ -510,7 +516,8 @@ procedure TPathFinding.UpdateState;
 var
   I: Integer;
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psPathfinding);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskPathfinding);
+  gPerfLogs.SectionEnter(psPathfinding, gGame.GameTick);
   try
     if CACHE_PATHFINDING then
       for I := 0 to PATH_CACHE_MAX - 1 do
@@ -520,8 +527,9 @@ begin
       for I := 0 to PATH_CACHE_NO_ROUTES_AVOID_LOCKED_MAX - 1 do
         fCacheAvoidLocked[I].TimeToLive := Max(fCacheAvoidLocked[I].TimeToLive - 1, 0);
   finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psPathfinding);
+    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskPathfinding);
   end;
+  gPerfLogs.SectionLeave(psPathfinding);
 end;
 
 

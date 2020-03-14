@@ -52,7 +52,9 @@ type
                                     aColor: TColor4; aLineWidth: Byte);
     class procedure WriteOutline   (aLeft, aTop, aWidth, aHeight, aLineWidth: SmallInt; Col: TColor4);
     class procedure WriteShape     (aLeft, aTop, aWidth, aHeight: SmallInt; Col: TColor4; Outline: TColor4 = $00000000);
-    class procedure WritePolyShape (aPoints: array of TKMPoint; aColor: TColor4);
+    class procedure WritePolyShape (aPoints: TKMPointArray; aColor: TColor4; aPattern: Word = $FFFF); overload;
+    class procedure WritePolyShape (aPoints: TKMPointFArray; aColor: TColor4; aPattern: Word = $FFFF); overload;
+//    class procedure WritePolyShape (aPoints: TKMPointFArray; aColor: TKMColor4f; aPattern: Word = $FFFF); overload;
     class procedure WriteLine      (aFromX, aFromY, aToX, aToY: Single; aCol: TColor4; aPattern: Word = $FFFF);
     class procedure WriteText      (aLeft, aTop, aWidth: SmallInt; aText: UnicodeString; aFont: TKMFont; aAlign: TKMTextAlign;
                                     aColor: TColor4 = $FFFFFFFF; aIgnoreMarkup: Boolean = False; aShowMarkup: Boolean = False;
@@ -619,12 +621,29 @@ end;
 
 
 //Renders polygon shape with given color
-class procedure TKMRenderUI.WritePolyShape(aPoints: array of TKMPoint; aColor: TColor4);
+class procedure TKMRenderUI.WritePolyShape(aPoints: TKMPointArray; aColor: TColor4; aPattern: Word = $FFFF);
 var I: Integer;
 begin
   TRender.BindTexture(0); // We have to reset texture to default (0), because it could be bind to any other texture (atlas)
 
   glColor4ubv(@aColor);
+  glLineStipple(2, aPattern);
+  glBegin(GL_POLYGON);
+    for I := 0 to High(aPoints) do
+    begin
+      glVertex2f(aPoints[I].X, aPoints[I].Y);
+    end;
+  glEnd;
+end;
+
+
+class procedure TKMRenderUI.WritePolyShape(aPoints: TKMPointFArray; aColor: TColor4; aPattern: Word = $FFFF);
+var I: Integer;
+begin
+  TRender.BindTexture(0); // We have to reset texture to default (0), because it could be bind to any other texture (atlas)
+
+  glColor4ubv(@aColor);
+  glLineStipple(2, aPattern);
   glBegin(GL_POLYGON);
     for I := 0 to High(aPoints) do
     begin
@@ -649,6 +668,25 @@ begin
   glEnd;
   glDisable(GL_LINE_STIPPLE);
 end;
+
+
+//class procedure TKMRenderUI.WritePolyShape(aPoints: TKMPointFArray; aColor: TKMColor4f; aPattern: Word = $FFFF);
+//var I: Integer;
+//begin
+//  TRender.BindTexture(0); // We have to reset texture to default (0), because it could be bind to any other texture (atlas)
+//
+////  glColor4ubv(@aColor);
+//  glColor4f(aColor.R, aColor.G, aColor.B, aColor.A);
+////  glColor4f(1,0,0, 1);
+//  glLineStipple(2, aPattern);
+//  glBegin(GL_LINE_STRIP);
+//    glColor4f(1,0,0, 1);
+//    for I := 0 to High(aPoints) do
+//    begin
+//      glVertex2f(aPoints[I].X, aPoints[I].Y);
+//    end;
+//  glEnd;
+//end;
 
 
 {Renders a line of text}

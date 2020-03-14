@@ -259,9 +259,7 @@ begin
 
   Inc(fCounter);
 
-  if DO_PERF_LOGGING then gGame.PerfLog.StartTick(fCounter);
-
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRender);
+//  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRender);
 
   ApplyTransform;
 
@@ -344,7 +342,7 @@ begin
     if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderOther);
 
   glPopAttrib;
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRender);
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskRender);
 
   if DO_PERF_LOGGING then gGame.PerfLog.EndTick;
 end;

@@ -127,6 +127,7 @@ type
     cpGraphicTweaks: TCategoryPanel;
     cpLogs: TCategoryPanel;
     cpGameAdv: TCategoryPanel;
+    cpPerfLogs: TCategoryPanel;
     chkSnowHouses: TCheckBox;
     chkLoadUnsupSaves: TCheckBox;
     chkJamMeter: TCheckBox;
@@ -147,6 +148,7 @@ type
     N10: TMenuItem;
     N9: TMenuItem;
     Debug_UnlockCmpMissions: TMenuItem;
+
 
     procedure Export_TreeAnim1Click(Sender: TObject);
     procedure MenuItem1Click(Sender: TObject);
@@ -256,7 +258,7 @@ uses
   KM_RenderPool,
   KM_Hand,
   KM_ResKeys, KM_FormLogistics, KM_Game,
-  KM_Log, KM_CommonClasses;
+  KM_Log, KM_CommonClasses, KM_DevPerfLog;
 
 
 //Remove VCL panel and use flicker-free TMyPanel instead

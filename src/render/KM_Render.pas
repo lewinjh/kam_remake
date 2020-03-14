@@ -4,7 +4,7 @@ interface
 uses
   {$IFDEF WDC} Windows, Graphics, JPEG, {$ENDIF} //Lazarus doesn't have JPEG library yet -> FPReadJPEG?
   {$IFDEF Unix} LCLIntf, LCLType, OpenGLContext, {$ENDIF}
-  Math, dglOpenGL, KromOGLUtils, KromUtils, KM_RenderControl;
+  Math, dglOpenGL, KromOGLUtils, KromUtils, KM_RenderControl, KM_RenderQuery;
 
 
 type
@@ -26,6 +26,7 @@ type
     fOpenGL_Vendor, fOpenGL_Renderer, fOpenGL_Version: UnicodeString;
     fScreenX, fScreenY: Word;
     fBlind: Boolean;
+    fQuery: TKMRenderQuery;
     class var
       fLastBindedTextureId: Cardinal;
   public
@@ -51,10 +52,21 @@ type
     property ScreenY: Word read fScreenY;
     property Blind: Boolean read fBlind;
 
+    property Query: TKMRenderQuery read fQuery;
+
+//    procedure QueriesDelete(aQueryId: Integer);
+//    function QueriesGen: Integer;
+//    procedure QueriesBegin(aQueryId: Integer);
+//    procedure QueriesEnd(aQueryId: Integer);
+//    function QueriesTime(aQueryId: Integer): Int64;
+
     procedure BeginFrame;
     procedure RenderBrightness(aValue: Byte);
     procedure EndFrame;
   end;
+
+var
+  gRender: TRender;
 
 
 implementation
@@ -237,6 +249,39 @@ begin
 end;
 
 
+//procedure TRender.QueriesBegin(aQueryId: Integer);
+//begin
+//  glBeginQuery(GL_TIME_ELAPSED, aQueryId);
+//
+////  glQueryCounter(fQueryID[aQueryId, fQueryBufferA].TimeStart, GL_TIMESTAMP);
+//end;
+//
+//
+//procedure TRender.QueriesDelete(aQueryId: Integer);
+//begin
+//
+//end;
+//
+//
+//procedure TRender.QueriesEnd(aQueryId: Integer);
+//begin
+//  glEndQuery(GL_TIME_ELAPSED);
+//end;
+//
+//
+//function TRender.QueriesGen: Integer;
+//begin
+//  Result := 0;
+////  glGenQueries(1, &Result);
+//end;
+//
+//
+//function TRender.QueriesTime(aQueryId: Integer): Int64;
+//begin
+//  Result := 0;
+//end;
+
+
 procedure TRender.DoPrintScreen(const aFileName: string);
 {$IFDEF WDC}
 var
@@ -315,6 +360,9 @@ begin
   glFinish;
   fRenderControl.SwapBuffers;
 end;
+
+
+
 
 
 //Fake Render from Atlas, to force copy of it into video RAM, where it is supposed to be

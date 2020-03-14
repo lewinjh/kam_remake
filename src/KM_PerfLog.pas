@@ -6,43 +6,61 @@ uses
 
 
 type
-  TPerfSection = (psTick, psHungarian, psAIFields, psFOW,
-                  psFOWCheck, psFOWCheck3, psFOWCheck5,
-                  psRender,
-                  psRenderTer,
-                  psRenderTerBase, psUpdateVBO, psDoTiles, psDoWater, psDoTilesLayers, psDoOverlays, psDoLighting, psDoShadows,
-                  psRenderFences, psRenderPlans,
-                  psRenderOther, psRenderList, psRenderHands, psRenderFOW,
-                  psHands, psPathfinding, psTerrain, psGIP, psScripting);
+  TKMPerfSection = (pskTick,
+                      pskHungarian, pskAIFields, pskFOW,
+                      pskHands, pskPathfinding, pskTerrain, psGIP, psScripting,
+                    pskRender,
+                      psFOWCheck, psFOWCheck3, psFOWCheck5,
+                      psRenderTer,
+                      psRenderTerBase, psUpdateVBO, psDoTiles, psDoWater, psDoTilesLayers, psDoOverlays, psDoLighting, psDoShadows,
+                      psRenderFences, psRenderPlans,
+                      psRenderOther, psRenderList, psRenderHands, psRenderFOW
+                    );
 
 const
-  SKIP_SECTION: set of TPerfSection = [psHungarian, psAIFields, psFOW, psFOWCheck, psFOWCheck3, psFOWCheck5,
+  //Unicode for TStringList population
+  SectionName: array [TKMPerfSection] of UnicodeString = ('Tick', 'Hungur', 'AIFields', 'FOW',
+    'Hands', 'PFinding', 'Terrain', 'GIP', 'Script',
+    'Render',
+    'FOWChecks', 'FOWCheck3', 'FOWCheck5',
+    'RenderTer', 'RenTerBase',
+    'UpdateVBO', 'DoTiles', 'DoWater', 'DoLayers', 'DoOverlays', 'DoLight', 'DoShadows',
+    'RenFences', 'RenPlans',
+    'RenderOth', 'RendList', 'RendHands', 'RenderFOW'
+    );
+
+const
+  SKIP_SECTION: set of TKMPerfSection = [pskHungarian, pskAIFields, pskFOW, psFOWCheck, psFOWCheck3, psFOWCheck5,
                                        psRenderOther, psRenderList, psRenderHands, psRenderFOW,
-                                       psHands, psPathfinding, psTerrain, psGIP, psScripting];
+                                       pskHands, pskPathfinding, pskTerrain, psGIP, psScripting];
 
 type
   //Log how much time each section takes and write results to a log file
 
   TKMPerfSectionData = record
-    Section: TPerfSection;
+    Section: TKMPerfSection;
     Time: Int64;
   end;
 
   TKMPerfLog = class
   private
     fTick: Cardinal;
-    fCount: array [TPerfSection] of Integer;
-    fTimeEnter: array [TPerfSection] of Int64;
+    fRenderCounter: Cardinal;
+    fCount: array [TKMPerfSection] of Integer;
+    fTimeEnter: array [TKMPerfSection] of Int64;
 //    fTimes: array [TPerfSection] of array of Int64;
-    fTickTimes: TDictionary<Cardinal, TDictionary<TPerfSection, Int64>>;
+    fTickTimes: TDictionary<Cardinal, TDictionary<TKMPerfSection, Int64>>;
+//    fRenderTimes: TDictionary<Cardinal, TDictionary<TKMPerfSection, Int64>>;
   public
     constructor Create;
     destructor Destroy; override;
     procedure Clear;
     procedure StartTick(aTick: Cardinal);
     procedure EndTick;
-    procedure EnterSection(aSection: TPerfSection);
-    procedure LeaveSection(aSection: TPerfSection);
+    procedure StartRender;//(aCounter: Cardinal);
+    procedure EndRender;
+    procedure EnterSection(aSection: TKMPerfSection);
+    procedure LeaveSection(aSection: TKMPerfSection);
     procedure SaveToFile(const aFilename: UnicodeString);
   end;
 
@@ -54,15 +72,7 @@ uses
 
 const
   SECT_W = 12;
-  //Unicode for TStringList population
-  SectionName: array [TPerfSection] of UnicodeString = ('Tick', 'Hungur', 'AIFields', 'FOW',
-    'FOWChecks', 'FOWCheck3', 'FOWCheck5',
-    'Render',
-    'RenderTer', 'RenTerBase',
-    'UpdateVBO', 'DoTiles', 'DoWater', 'DoLayers', 'DoOverlays', 'DoLight', 'DoShadows',
-    'RenFences', 'RenPlans',
-    'RenderOth', 'RendList', 'RendHands', 'RenderFOW',
-    'Hands', 'PFinding', 'Terrain', 'GIP', 'Script');
+
 
 //  LIMITS: array[TPerfSection] of Integer = (30000, 5000, 5000, 5000, 5000, 5000, 5000, 5000);
 
@@ -70,20 +80,22 @@ const
 { TKMPerfLog }
 constructor TKMPerfLog.Create;
 var
-  K: TPerfSection;
+  K: TKMPerfSection;
 begin
   inherited;
 
-  for K := Low(TPerfSection) to High(TPerfSection) do
+  for K := Low(TKMPerfSection) to High(TKMPerfSection) do
     fTimeEnter[K] := 0;
 
-  fTickTimes := TDictionary<Cardinal, TDictionary<TPerfSection, Int64>>.Create;
+  fTickTimes := TDictionary<Cardinal, TDictionary<TKMPerfSection, Int64>>.Create;
+
+  fRenderCounter := 0;
 end;
 
 
 destructor TKMPerfLog.Destroy;
 var
-  SectDict: TDictionary<TPerfSection, Int64>;
+  SectDict: TDictionary<TKMPerfSection, Int64>;
 begin
   for SectDict in fTickTimes.Values do
     SectDict.Free;
@@ -97,31 +109,31 @@ end;
 
 procedure TKMPerfLog.Clear;
 var
-  I: TPerfSection;
+  I: TKMPerfSection;
 begin
-  for I := Low(TPerfSection) to High(TPerfSection) do
+  for I := Low(TKMPerfSection) to High(TKMPerfSection) do
     fCount[I] := 0;
 end;
 
 
 procedure TKMPerfLog.StartTick(aTick: Cardinal);
 var
-  K: TPerfSection;
-  SectDict: TDictionary<TPerfSection, Int64>;
+  K: TKMPerfSection;
+  SectDict: TDictionary<TKMPerfSection, Int64>;
 begin
   Assert(not fTickTimes.ContainsKey(aTick), 'Tick is already started');
 
   fTick := aTick;
 
-  SectDict := TDictionary<TPerfSection, Int64>.Create;
+  SectDict := TDictionary<TKMPerfSection, Int64>.Create;
   fTickTimes.Add(fTick, SectDict);
 
-  EnterSection(psTick);
+  EnterSection(pskTick);
 
   //Init all sections
-  for K := Low(TPerfSection) to High(TPerfSection) do
+  for K := Low(TKMPerfSection) to High(TKMPerfSection) do
   begin
-    if K = psTick then
+    if K = pskTick then
       Continue;
 
     EnterSection(K);
@@ -132,21 +144,52 @@ end;
 
 procedure TKMPerfLog.EndTick;
 begin
-  LeaveSection(psTick);
+  LeaveSection(pskTick);
 end;
 
 
-procedure TKMPerfLog.EnterSection(aSection: TPerfSection);
+procedure TKMPerfLog.StartRender;//(aCounter: Cardinal);
+var
+  K: TKMPerfSection;
+  SectDict: TDictionary<TKMPerfSection, Int64>;
+begin
+  Inc(fRenderCounter);
+//  Assert(not fRenderTimes.ContainsKey(fRenderCounter), 'Tick is already started');
+
+  SectDict := TDictionary<TKMPerfSection, Int64>.Create;
+  fTickTimes.Add(fRenderCounter, SectDict);
+
+  EnterSection(pskRender);
+
+  //Init all sections
+  for K := Low(TKMPerfSection) to High(TKMPerfSection) do
+  begin
+    if K in [pskTick, pskRender] then
+      Continue;
+
+    EnterSection(K);
+    LeaveSection(K);
+  end;
+end;
+
+
+procedure TKMPerfLog.EndRender;
+begin
+  LeaveSection(pskRender);
+end;
+
+
+procedure TKMPerfLog.EnterSection(aSection: TKMPerfSection);
 begin
   Assert(fTimeEnter[aSection] = 0, 'Entering not left section');
   fTimeEnter[aSection] := TimeGetUsec;
 end;
 
 
-procedure TKMPerfLog.LeaveSection(aSection: TPerfSection);
+procedure TKMPerfLog.LeaveSection(aSection: TKMPerfSection);
 var
   T, OldT: Int64;
-  SectDict: TDictionary<TPerfSection, Int64>;
+  SectDict: TDictionary<TKMPerfSection, Int64>;
 //  SectData: TKMPerfSectionData;
 begin
   T := TimeGetUsec - fTimeEnter[aSection]; //Measure it ASAP
@@ -177,19 +220,19 @@ end;
 procedure TKMPerfLog.SaveToFile(const aFilename: UnicodeString);
 var
   I: Integer;
-  K: TPerfSection;
+  K: TKMPerfSection;
   S: TStringList;
   TickKey: Cardinal;
-  SectKey: TPerfSection;
+  SectKey: TKMPerfSection;
   Str: String;
-  SectDict: TDictionary<TPerfSection, Int64>;
+  SectDict: TDictionary<TKMPerfSection, Int64>;
 
   FastTick: Boolean;
 
-  SectsArray: TArray<TPerfSection>;
+  SectsArray: TArray<TKMPerfSection>;
   TicksArray: TArray<Cardinal>;
 
-  Total: array[TPerfSection] of Int64;
+  Total: array[TKMPerfSection] of Int64;
 begin
   ForceDirectories(ExtractFilePath(aFilename));
 
@@ -200,7 +243,7 @@ begin
 
 //  Str := 'Tick   '; //7
   Str := '       ';
-  for K := Low(TPerfSection) to High(TPerfSection) do
+  for K := Low(TKMPerfSection) to High(TKMPerfSection) do
   begin
     if K in SKIP_SECTION then
       Continue;
@@ -218,7 +261,7 @@ begin
     SectDict := fTickTimes.Items[TickKey];
 
     SectsArray := SectDict.Keys.ToArray;
-    TArray.Sort<TPerfSection>(SectsArray);
+    TArray.Sort<TKMPerfSection>(SectsArray);
 
     FastTick := False;
     Str := Format('%6d:', [TickKey]);
@@ -244,7 +287,7 @@ begin
 
   S.Append('AVERAGE');
   Str := '';
-  for K := Low(TPerfSection) to High(TPerfSection) do
+  for K := Low(TKMPerfSection) to High(TKMPerfSection) do
   begin
     if K in SKIP_SECTION then
       Continue;

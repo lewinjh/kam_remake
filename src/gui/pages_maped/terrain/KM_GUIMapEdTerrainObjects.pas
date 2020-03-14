@@ -561,6 +561,8 @@ end;
 
 procedure TKMMapEdTerrainObjects.Show;
 begin
+  gRes.MapElements.ExportToText('');
+
   case fLastObjectIndex of
     -1:   ; // Do not update Objects if no last object was selected
     OBJ_BLOCK_TAG: ObjectsChange(ObjectBlock);

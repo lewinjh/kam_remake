@@ -21,7 +21,6 @@ type
     fGameSettings: TKMGameSettings;
     fMusicLib: TKMMusicLib;
     fNetworking: TKMNetworking;
-    fRender: TRender;
     fTimerUI: TTimer;
     fMainMenuInterface: TKMMainMenuInterface;
     fLastTimeRender: Cardinal;
@@ -136,7 +135,7 @@ uses
   KM_FormLogistics,
   KM_Main, KM_Controls, KM_Log, KM_Sound, KM_GameInputProcess, KM_GameInputProcess_Multi, KM_GameSavedReplays,
   KM_InterfaceDefaults, KM_GameCursor, KM_ResTexts,
-  KM_Saves, KM_CommonUtils, KM_RandomChecks;
+  KM_Saves, KM_CommonUtils, KM_RandomChecks, KM_DevPerfLog;
 
 
 { Creating everything needed for MainMenu, game stuff is created on StartGame }
@@ -150,7 +149,7 @@ begin
 
   fLastTimeRender := 0;
 
-  fRender := TRender.Create(aRenderControl, aScreenX, aScreenY, aVSync);
+  gRender := TRender.Create(aRenderControl, aScreenX, aScreenY, aVSync);
 
   fChat := TKMChat.Create;
 
@@ -168,7 +167,7 @@ begin
   {$IFDEF USE_MAD_EXCEPT}fExceptions.LoadTranslation;{$ENDIF}
 
   //Show the message if user has old OpenGL drivers (pre-1.4)
-  if fRender.IsOldGLVersion then
+  if gRender.IsOldGLVersion then
     //MessageDlg works better than Application.MessageBox or others, it stays on top and
     //pauses here until the user clicks ok.
     MessageDlg(gResTexts[TX_GAME_ERROR_OLD_OPENGL] + EolW + EolW + gResTexts[TX_GAME_ERROR_OLD_OPENGL_2], mtWarning, [mbOk], 0);
@@ -195,6 +194,9 @@ begin
 
   fMusicLib.ToggleShuffle(fGameSettings.ShuffleOn); //Determine track order
 
+//  gPerfLogs := TKMPerfLogs.Create([psGameTick..psFrameGUI], True);
+//  gPerfLogs.ShowForm( gMain.FormMain.cpPerfLogs );
+
   fOnGameStart := GameStarted;
   fOnGameEnd := GameEnded;
 end;
@@ -212,6 +214,8 @@ end;
 { Destroy what was created }
 destructor TKMGameApp.Destroy;
 begin
+  FreeAndNil(gPerfLogs);
+
   //Freeing network sockets and OpenAL can result in events like Resize/Paint occuring (seen in crash reports)
   //Set fIsExiting so we know to skip them
   fIsExiting := True;
@@ -237,7 +241,7 @@ begin
   FreeAndNil(gRandomCheckLogger);
   FreeAndNil(gGameCursor);
 
-  FreeThenNil(fRender);
+  FreeThenNil(gRender);
 
   inherited;
 end;
@@ -284,9 +288,9 @@ begin
   //Campaigns use single locale
   fCampaigns := TKMCampaignsCollection.Create;
   fCampaigns.Load;
-  fMainMenuInterface := TKMMainMenuInterface.Create(fRender.ScreenX, fRender.ScreenY);
+  fMainMenuInterface := TKMMainMenuInterface.Create(gRender.ScreenX, gRender.ScreenY);
   fMainMenuInterface.PageChange(gpOptions);
-  Resize(fRender.ScreenX, fRender.ScreenY); //Force the recreated main menu to resize to the user's screen
+  Resize(gRender.ScreenX, gRender.ScreenY); //Force the recreated main menu to resize to the user's screen
   fTimerUI.Enabled := True; //Safe to enable the timer again
 end;
 
@@ -302,7 +306,7 @@ end;
 procedure TKMGameApp.Resize(X,Y: Integer);
 begin
   if fIsExiting then Exit;
-  fRender.Resize(X, Y);
+  gRender.Resize(X, Y);
 
   //Main menu is invisible while in game, but it still exists and when we return to it
   //it must be properly sized (player could resize the screen while playing)
@@ -363,8 +367,8 @@ procedure TKMGameApp.MouseMove(Shift: TShiftState; X,Y: Integer);
 var Ctrl: TKMControl;
     CtrlID: Integer;
 begin
-  if not InRange(X, 1, fRender.ScreenX - 1)
-  or not InRange(Y, 1, fRender.ScreenY - 1) then
+  if not InRange(X, 1, gRender.ScreenX - 1)
+  or not InRange(Y, 1, gRender.ScreenY - 1) then
     Exit; // Exit if Cursor is outside of frame
 
   if gGame <> nil then
@@ -626,7 +630,7 @@ begin
   if gMain <> nil then
     gMain.FormMain.ControlsReset;
 
-  gGame := TKMGame.Create(aGameMode, fRender, fNetworking, GameDestroyed);
+  gGame := TKMGame.Create(aGameMode, gRender, fNetworking, GameDestroyed);
   try
     gGame.LoadFromFile(FilePath, aGIPPath);
   except
@@ -672,7 +676,7 @@ begin
   if gMain <> nil then
     gMain.FormMain.ControlsReset;
 
-  gGame := TKMGame.Create(aGameMode, fRender, fNetworking, GameDestroyed);
+  gGame := TKMGame.Create(aGameMode, gRender, fNetworking, GameDestroyed);
   try
     gGame.GameStart(MissionFile, GameName, aCRC, aCampaign, aMap, aDesiredLoc, aDesiredColor, aDifficulty, aAIType, aAutoselectHumanLoc);
   except
@@ -724,7 +728,7 @@ begin
   if gMain <> nil then
     gMain.FormMain.ControlsReset;
 
-  gGame := TKMGame.Create(GameMode, fRender, fNetworking, GameDestroyed);
+  gGame := TKMGame.Create(GameMode, gRender, fNetworking, GameDestroyed);
   try
     gGame.SavedReplays := SavedReplays;
     gGame.LoadSavedReplay(aTick, SaveFile);
@@ -762,7 +766,7 @@ begin
   if gMain <> nil then
     gMain.FormMain.ControlsReset;
 
-  gGame := TKMGame.Create(aGameMode, fRender, nil, GameDestroyed);
+  gGame := TKMGame.Create(aGameMode, gRender, nil, GameDestroyed);
   gGame.SetSeed(4); //Every time the game will be the same as previous. Good for debug.
   try
     gGame.MapEdStartEmptyMap(aSizeX, aSizeY);
@@ -1028,19 +1032,24 @@ procedure TKMGameApp.Render(aForPrintScreen: Boolean = False);
 begin
   if SKIP_RENDER then Exit;
   if fIsExiting then Exit;
-  if fRender.Blind then Exit;
+  if gRender.Blind then Exit;
   if not fTimerUI.Enabled then Exit; //Don't render while toggling locale
 
-  fRender.BeginFrame;
+  gRender.BeginFrame;
 
   if gGame <> nil then
-    gGame.Render(fRender)
+  begin
+    gGame.Render(gRender);
+//    gPerfLogs.Render(TOOLBAR_WIDTH + 10, gMain.FormMain.RenderArea.Width - 10, gMain.FormMain.RenderArea.Height - 10);
+  end
   else
     fMainMenuInterface.Paint;
 
-  fRender.RenderBrightness(GameSettings.Brightness);
+  gRender.RenderBrightness(GameSettings.Brightness);
 
-  fRender.EndFrame;
+  gPerfLogs.Render(TOOLBAR_WIDTH + 10, gMain.FormMain.RenderArea.Width - 10, gMain.FormMain.RenderArea.Height - 10);
+
+  gRender.EndFrame;
 
   fLastTimeRender := TimeGet;
 
@@ -1052,7 +1061,7 @@ end;
 
 function TKMGameApp.RenderVersion: UnicodeString;
 begin
-  Result := 'OpenGL ' + fRender.RendererVersion;
+  Result := 'OpenGL ' + gRender.RendererVersion;
 end;
 
 
@@ -1070,7 +1079,7 @@ begin
     strName := aFilename;
 
   ForceDirectories(ExtractFilePath(strName));
-  fRender.DoPrintScreen(strName);
+  gRender.DoPrintScreen(strName);
 end;
 
 

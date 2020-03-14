@@ -354,9 +354,9 @@ var
 
 implementation
 uses
-  KM_Log, KM_HandsCollection, KM_TerrainWalkConnect, KM_Resource, KM_Units, KM_PerfLog,
+  KM_Log, KM_HandsCollection, KM_TerrainWalkConnect, KM_Resource, KM_Units, KM_PerfLog, KM_DevPerfLog,
   KM_ResSound, KM_Sound, KM_UnitActionStay, KM_UnitWarrior, KM_TerrainPainter, KM_Houses,
-  KM_ResUnits, KM_ResSprites, KM_Hand, KM_Game, KM_GameTypes, KM_ScriptingEvents, KM_Utils;
+  KM_ResUnits, KM_ResSprites, KM_Hand, KM_Game, KM_GameTypes, KM_ScriptingEvents, KM_Utils, KM_DevPerfLogTypes;
 
 
 { TKMTerrain }
@@ -4522,7 +4522,8 @@ var
   T: Integer;
 begin
   if not DYNAMIC_TERRAIN then Exit;
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psTerrain);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskTerrain);
+  gPerfLogs.SectionEnter(psTerrain, gGame.GameTick);
   try
     inc(fAnimStep);
 
@@ -4587,8 +4588,9 @@ begin
       Inc(A, TERRAIN_PACE);
     end;
   finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psTerrain);
+    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskTerrain);
   end;
+  gPerfLogs.SectionLeave(psTerrain);
 end;
 
 

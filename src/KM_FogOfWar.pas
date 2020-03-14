@@ -110,7 +110,7 @@ const
 
 implementation
 uses
-  Math, SysUtils, KM_GameApp, KM_PerfLog;
+  Math, SysUtils, KM_GameApp, KM_PerfLog, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 const
   //Addition to Revelation radius for Render revelation
@@ -196,7 +196,8 @@ procedure TKMFogOfWar.RevealCircle(const Pos: TKMPoint; Radius, Amount: Word);
 var
   AroundRadius: Word;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
+  gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     AroundRadius := Radius + RENDER_RADIUS_ADD;
     if not fCoverHasBeenCalled and not gGameApp.DynamicFOWEnabled then
@@ -216,8 +217,9 @@ begin
       RevealFor(False, AroundRadius, FOG_OF_WAR_MAX);
     end;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
   end;
+  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -250,15 +252,17 @@ procedure TKMFogOfWar.CoverCircle(const Pos: TKMPoint; Radius: Word);
   end;
 
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
+  gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     CoverFor(True, Radius);
     CoverFor(False, Radius - RENDER_RADIUS_ADD);
 
     fCoverHasBeenCalled := True;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
   end;
+  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -266,7 +270,8 @@ procedure TKMFogOfWar.RevealRect(const TL, BR: TKMPoint; Amount: Word);
 var
   I, K: Word;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
+  gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     for I := TL.Y to BR.Y do
       for K := TL.X to BR.X do
@@ -281,8 +286,9 @@ begin
       for K := Max(0, TL.X - RENDER_RADIUS_ADD) to Min(fMapX - 1, BR.X + RENDER_RADIUS_ADD) do
         RenderRevelation[I,K] := FOG_OF_WAR_MAX;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
   end;
+  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -290,7 +296,8 @@ procedure TKMFogOfWar.CoverRect(const TL, BR: TKMPoint);
 var
   I, K: Word;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
+  gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     for I := TL.Y to BR.Y do
       for K := TL.X to BR.X do
@@ -303,8 +310,9 @@ begin
 
     fCoverHasBeenCalled := True;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
   end;
+  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -313,7 +321,8 @@ procedure TKMFogOfWar.RevealEverything;
 var
   I,K: Word;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
+  gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     for I := 0 to fMapY - 1 do
       for K := 0 to fMapX - 1 do
@@ -322,8 +331,9 @@ begin
         RenderRevelation[I, K] := FOG_OF_WAR_MAX;
       end;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
   end;
+  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -331,7 +341,8 @@ procedure TKMFogOfWar.CoverEverything;
 var
   I,K: Word;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
+  gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     for I := 0 to fMapY - 1 do
       for K := 0 to fMapX - 1 do
@@ -342,8 +353,9 @@ begin
 
     fCoverHasBeenCalled := True;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
   end;
+  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -568,7 +580,8 @@ var
 begin
   if not gGameApp.DynamicFOWEnabled then Exit;
 
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOW);
+  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
+  gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     Inc(fAnimStep);
 
@@ -595,8 +608,9 @@ begin
           end;}
         end;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOW);
+    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
   end;
+  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 

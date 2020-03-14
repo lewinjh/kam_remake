@@ -251,7 +251,7 @@ uses
   KM_Game, KM_Hand, KM_HandsCollection, KM_Terrain, KM_CommonUtils, KM_ResTexts, KM_RenderPool,
   KM_Hungarian, KM_UnitActionWalkTo, KM_PerfLog, KM_AI, KM_ResUnits, KM_ScriptingEvents,
   KM_UnitActionStormAttack,
-  KM_GameTypes, KM_Log;
+  KM_GameTypes, KM_Log, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 
 const
@@ -1880,7 +1880,8 @@ var
   NewOrder: TKMCardinalArray;
   NewMembers: TList;
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psHungarian);
+//  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskHungarian);
+  gPerfLogs.SectionEnter(psHungarian, gGame.GameTick);
   try
     if not HUNGARIAN_GROUP_ORDER then Exit;
     if fMembers.Count <= 1 then Exit; //If it's just the leader we can't rearrange
@@ -1911,8 +1912,9 @@ begin
     Agents.Free;
     Tasks.Free;
   finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psHungarian);
+    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskHungarian);
   end;
+  gPerfLogs.SectionLeave(psHungarian);
 end;
 
 

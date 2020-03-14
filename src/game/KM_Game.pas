@@ -267,7 +267,7 @@ uses
   KM_Terrain, KM_Hand, KM_HandsCollection, KM_HandSpectator,
   KM_MissionScript, KM_MissionScript_Standard, KM_GameInputProcess_Multi, KM_GameInputProcess_Single,
   KM_Resource, KM_ResCursors, KM_ResSound, KM_InterfaceDefaults,
-  KM_Log, KM_ScriptingEvents, KM_Saves, KM_FileIO, KM_CommonUtils, KM_RandomChecks;
+  KM_Log, KM_ScriptingEvents, KM_Saves, KM_FileIO, KM_CommonUtils, KM_RandomChecks, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 
 //Create template for the Game
@@ -340,6 +340,7 @@ begin
   gAIFields := TKMAIFields.Create;
 
   if DO_PERF_LOGGING then fPerfLog := TKMPerfLog.Create;
+  gPerfLogs.Clear;
   gLog.AddTime('<== Game creation is done ==>');
 
   gScriptSounds := TKMScriptSoundsManager.Create; //Currently only used by scripting
@@ -1270,10 +1271,14 @@ end;
 
 procedure TKMGame.Render(aRender: TRender);
 begin
+  if DO_PERF_LOGGING then gGame.PerfLog.StartRender;
+
   gRenderPool.Render;
 
   aRender.SetRenderMode(rm2D);
   fActiveInterface.Paint;
+
+  if DO_PERF_LOGGING then gGame.PerfLog.EndRender;
 end;
 
 
@@ -2336,6 +2341,10 @@ begin
                         if fGameInputProcess.CommandsConfirmed(fGameTick + 1) then
                         begin
 //                          if DO_PERF_LOGGING then fPerfLog.StartTick(fGameTick + 1);
+                          gPerfLogs.StackCPU.TickBegin;
+                          gPerfLogs.SectionEnter(psGameTick, fGameTick + 1);
+//                          gPerfLogs.StackCPU.SectionEnter('Tick');
+
 
                           //As soon as next command arrives we are longer in a waiting state
                           if fWaitingForNetwork then
@@ -2390,6 +2399,9 @@ begin
                           if DoSaveRandomChecks then
                             gRandomCheckLogger.UpdateState(fGameTick);
 
+                          gPerfLogs.SectionLeave(psGameTick);
+//                          gPerfLogs.StackCPU.SectionRollback;
+                          gPerfLogs.StackCPU.TickEnd;
 //                          if DO_PERF_LOGGING then fPerfLog.EndTick;
                         end
                         else
