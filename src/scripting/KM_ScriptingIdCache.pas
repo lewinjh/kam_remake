@@ -42,7 +42,7 @@ type
 
 implementation
 uses
-  KM_Defaults, KM_Game, KM_HandsCollection, KM_PerfLog;
+  KM_Defaults, KM_Game, KM_HandsCollection, KM_PerfLog, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 
 { TKMScriptingIdCache }
@@ -212,7 +212,8 @@ procedure TKMScriptingIdCache.UpdateState;
 var
   I: Integer;
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psScripting);
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskScripting);
+  gPerfLogs.SectionEnter(psScripting, gGame.GameTick);
   //Clear out dead IDs every now and again
   //Leave them in the cache as nils, because we still might need to lookup that UID
   if gGame.GameTick mod 11 = 0 then
@@ -229,7 +230,8 @@ begin
       if (fGroupCache[I].G <> nil) and fGroupCache[I].G.IsDead then
         gHands.CleanUpGroupPointer(fGroupCache[I].G);
   end;
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psScripting);
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskScripting);
+  gPerfLogs.SectionLeave(psScripting);
 end;
 
 

@@ -6,7 +6,7 @@ object FormPerfLogs: TFormPerfLogs
   BorderStyle = bsNone
   Caption = 'PerfLog'
   ClientHeight = 389
-  ClientWidth = 300
+  ClientWidth = 280
   Color = clBtnFace
   ParentFont = True
   FormStyle = fsStayOnTop
@@ -23,14 +23,14 @@ object FormPerfLogs: TFormPerfLogs
     Visible = False
   end
   object Label2: TLabel
-    Left = 220
-    Top = 72
+    Left = 95
+    Top = 8
     Width = 67
     Height = 13
     Caption = 'Frame budget'
   end
   object cbStackedGFX: TCheckBox
-    Left = 220
+    Left = 8
     Top = 24
     Width = 81
     Height = 17
@@ -39,8 +39,8 @@ object FormPerfLogs: TFormPerfLogs
     OnClick = DoChange
   end
   object seFrameBudget: TSpinEdit
-    Left = 220
-    Top = 88
+    Left = 95
+    Top = 27
     Width = 73
     Height = 22
     MaxValue = 100
@@ -50,7 +50,7 @@ object FormPerfLogs: TFormPerfLogs
     OnChange = DoChange
   end
   object cbStackedCPU: TCheckBox
-    Left = 220
+    Left = 8
     Top = 8
     Width = 81
     Height = 17
@@ -59,8 +59,8 @@ object FormPerfLogs: TFormPerfLogs
     OnClick = DoChange
   end
   object cbSmoothLines: TCheckBox
-    Left = 220
-    Top = 48
+    Left = 184
+    Top = 8
     Width = 81
     Height = 17
     Caption = 'Smooth lines'

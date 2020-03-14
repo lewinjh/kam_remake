@@ -164,8 +164,8 @@ begin
     end;
   finally
     if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskPathfinding);
+    gPerfLogs.SectionLeave(psPathfinding);
   end;
-  gPerfLogs.SectionLeave(psPathfinding);
 end;
 
 
@@ -197,8 +197,8 @@ begin
     end;
   finally
     if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskPathfinding);
+    gPerfLogs.SectionLeave(psPathfinding);
   end;
-  gPerfLogs.SectionLeave(psPathfinding);
 end;
 
 
@@ -229,8 +229,8 @@ begin
       NodeList.Clear;
   finally
     if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskPathfinding);
+    gPerfLogs.SectionLeave(psPathfinding);
   end;
-  gPerfLogs.SectionLeave(psPathfinding);
 end;
 
 
@@ -528,8 +528,8 @@ begin
         fCacheAvoidLocked[I].TimeToLive := Max(fCacheAvoidLocked[I].TimeToLive - 1, 0);
   finally
     if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskPathfinding);
+    gPerfLogs.SectionLeave(psPathfinding);
   end;
-  gPerfLogs.SectionLeave(psPathfinding);
 end;
 
 

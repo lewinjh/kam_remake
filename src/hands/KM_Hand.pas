@@ -312,7 +312,7 @@ end;
 
 procedure TKMHandCommon.UpdateState(aTick: Cardinal);
 begin
-  fUnits.UpdateState;
+  fUnits.UpdateState(aTick);
 end;
 
 
@@ -1855,7 +1855,7 @@ begin
 	  AI.Defeat;
   
   //Update Groups logic before Units
-  fUnitGroups.UpdateState;
+  fUnitGroups.UpdateState(aTick);
 
   inherited;
 
@@ -1865,7 +1865,7 @@ begin
   //Distribute AI updates among different Ticks to avoid slowdowns
   if (aTick + Byte(fID)) mod 10 = 0 then
   begin
-    fBuildList.UpdateState;
+    fBuildList.UpdateState(aTick);
     fDeliveries.UpdateState(aTick);
   end;
 
@@ -1876,7 +1876,7 @@ begin
     //fArmyEval.UpdateState;
 
   if CanDoStatsUpdate(aTick) then
-    fStats.UpdateState;
+    fStats.UpdateState(aTick);
 
   if not gGame.IsMapEditor //Do not place first storehouse in map editor etc
     and fChooseLocation.Allowed

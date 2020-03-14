@@ -240,7 +240,7 @@ type
     procedure Save(SaveStream: TKMemoryStream);
     procedure Load(LoadStream: TKMemoryStream);
     procedure SyncLoad;
-    procedure UpdateState;
+    procedure UpdateState(aTick: Cardinal);
     procedure Paint(const aRect: TKMRect);
   end;
 
@@ -1913,8 +1913,8 @@ begin
     Tasks.Free;
   finally
     if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskHungarian);
+    gPerfLogs.SectionLeave(psHungarian);
   end;
-  gPerfLogs.SectionLeave(psHungarian);
 end;
 
 
@@ -2415,22 +2415,27 @@ begin
 end;
 
 
-procedure TKMUnitGroups.UpdateState;
+procedure TKMUnitGroups.UpdateState(aTick: Cardinal);
 var
   I: Integer;
 begin
-  //We delete dead groups only next tick after they died
-  //so that gMySpectator.Selected could register their death and reset
-  //(this could be outdated with Spectators appearence)
-  for I := Count - 1 downto 0 do
-  if FREE_POINTERS
-  and Groups[I].IsDead
-  and (Groups[I].fPointerCount = 0) then
-    fGroups.Delete(I);
+  gPerfLogs.SectionEnter(psGroups, aTick);
+  try
+    //We delete dead groups only next tick after they died
+    //so that gMySpectator.Selected could register their death and reset
+    //(this could be outdated with Spectators appearence)
+    for I := Count - 1 downto 0 do
+    if FREE_POINTERS
+    and Groups[I].IsDead
+    and (Groups[I].fPointerCount = 0) then
+      fGroups.Delete(I);
 
-  for I := 0 to Count - 1 do
-  if not Groups[I].IsDead then
-    Groups[I].UpdateState;
+    for I := 0 to Count - 1 do
+    if not Groups[I].IsDead then
+      Groups[I].UpdateState;
+  finally
+    gPerfLogs.SectionLeave(psGroups);
+  end;
 end;
 
 

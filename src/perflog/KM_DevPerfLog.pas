@@ -80,15 +80,28 @@ const
     ClassName: TKMPerfLogClass;
     Color: TKMColor3f;
   end = (
-    (Name: 'None';                    ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0;B:0);),
+    (Name: 'All';                     ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0;B:0);),
     (Name: 'GameTick';                ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:1;B:0);),
     (Name: '   Hands';                ClassName: TKMPerfLogSingleCPU; Color: (R:1;G:0.25;B:0);),
+    (Name: '     Units';              ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.5;B:0.5);),
+    (Name: '     Groups';             ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.75;B:0.75);),
+    (Name: '     Houses';             ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:1;B:1);),
+    (Name: '     Deliveries';         ClassName: TKMPerfLogSingleCPU; Color: (R:0.75;G:0.25;B:0.25);),
+    (Name: '     Buildlist';          ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:0.25;B:0.25);),
+    (Name: '     Stats';              ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:0.25;B:0.25);),
     (Name: '   FOW';                  ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.75;B:0);),
     (Name: '   Pathfinding';          ClassName: TKMPerfLogSingleCPU; Color: (R:0.0;G:1;B:0.75);),
     (Name: '   HungarianReorder';     ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:0;B:1);),
     (Name: '   AIFields';             ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.5;B:1);),
+    (Name: '   AI';                   ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.75;B:1);),
+    (Name: '     AI City Advanced';   ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.75;B:0.25);),
+    (Name: '     AI Army Advanced';   ClassName: TKMPerfLogSingleCPU; Color: (R:0.25;G:0.75;B:1);),
+    (Name: '     AI City Classic';    ClassName: TKMPerfLogSingleCPU; Color: (R:0.25;G:0.5;B:1);),
+    (Name: '     AI Army Classic';    ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:0.5;B:0.25);),
     (Name: '   Terrain';              ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:0.5;B:0.5);),
     (Name: '   TerrainFinder';        ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:1;B:1);),
+    (Name: '   Scripting';            ClassName: TKMPerfLogSingleCPU; Color: (R:0.25;G:1;B:1);),
+    (Name: '   UpdateVBO';            ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:0.5;B:1);),
     (Name: 'Render.CPU';              ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:0;B:0);),
     (Name: 'Render.GFX';              ClassName: TKMPerfLogSingleGFX; Color: (R:1.0;G:1;B:0);),
 //    (Name: 'Render.GFX';              ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:1;B:0);),
@@ -204,7 +217,7 @@ begin
   if Self = nil then Exit;
 
   fItems[aSection].SectionLeave;
-  fStackCPU.SectionRollback;
+  fStackCPU.SectionRollback(aSection);
 end;
 
 

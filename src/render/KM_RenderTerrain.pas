@@ -86,7 +86,7 @@ type
 
 implementation
 uses
-  KM_Game, KM_Render, KM_Resource, KM_PerfLog;
+  KM_Game, KM_Render, KM_Resource, KM_PerfLog, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 type
   TAnimLayer = (alWater, alFalls, alSwamp);
@@ -326,6 +326,8 @@ var
   TexOffsetWater, TexOffsetFalls, TexOffsetSwamp: Word;
 begin
   if not fUseVBO then Exit;
+  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskUpdateVBO);
+  gPerfLogs.SectionEnter(psUpdateVBO, gGame.GameTick);
 
   fLastBindVBOArrayType := vatNone;
 
@@ -483,6 +485,9 @@ begin
     H := H + 6;
     Inc(I);
   end;
+
+  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskUpdateVBO);
+  gPerfLogs.SectionLeave(psUpdateVBO);
 end;
 
 
@@ -1139,9 +1144,7 @@ begin
   //Thus we allow VBO only in 2D
   fUseVBO := SHOW_UIDs;//DoUseVBO;
 
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psUpdateVBO);
   UpdateVBO(aAnimStep, aFOW);
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psUpdateVBO);
 
   if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoTiles);
   DoTiles(aFOW);

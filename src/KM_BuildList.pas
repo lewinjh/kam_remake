@@ -206,14 +206,14 @@ type
     procedure Save(SaveStream: TKMemoryStream);
     procedure Load(LoadStream: TKMemoryStream);
     procedure SyncLoad;
-    procedure UpdateState;
+    procedure UpdateState(aTick: Cardinal);
   end;
 
 
 implementation
 uses
   Math,
-  KM_Game, KM_Hand, KM_HandsCollection, KM_Resource;
+  KM_Game, KM_Hand, KM_HandsCollection, KM_Resource, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 
 const
@@ -1387,35 +1387,40 @@ begin
 end;
 
 
-procedure TKMBuildList.UpdateState;
+procedure TKMBuildList.UpdateState(aTick: Cardinal);
 begin
-  HouseList.UpdateState;
-  fRepairList.UpdateState;
+  gPerfLogs.SectionEnter(psBuildlist, aTick);
+  try
+    HouseList.UpdateState;
+    fRepairList.UpdateState;
 
-  RemoveExtraWorkers;
+    RemoveExtraWorkers;
 
-  //In 99% of cases we have either of these situations:
-  //  1. Lots of jobs, only few workers to do them.
-  //  2. Lots of workers, only a few jobs for them to do.
-  //In case 1. the best solution is to parse workers list and find the best job for him
-  //In case 2. the best solution is to parse jobs list and find the best worker for the job
-  //This approach should give jobs more sensibly than just parsing workers or parsing jobs list each time.
-  //A hungarian solution would be better as a long term goal (match list of workers/jobs optimally) but
-  //keep in mind that it will only be more efficient when BOTH IdleWorkerCount and JobCount are > 1,
-  //which is very rare (only when ordering a large number of jobs within 2 seconds)
+    //In 99% of cases we have either of these situations:
+    //  1. Lots of jobs, only few workers to do them.
+    //  2. Lots of workers, only a few jobs for them to do.
+    //In case 1. the best solution is to parse workers list and find the best job for him
+    //In case 2. the best solution is to parse jobs list and find the best worker for the job
+    //This approach should give jobs more sensibly than just parsing workers or parsing jobs list each time.
+    //A hungarian solution would be better as a long term goal (match list of workers/jobs optimally) but
+    //keep in mind that it will only be more efficient when BOTH IdleWorkerCount and JobCount are > 1,
+    //which is very rare (only when ordering a large number of jobs within 2 seconds)
 
-  //In KaM the order is:
-  //1. House plans
-  //2. Fieldworks
-  //3. Houses
-  //4. Repairs
-  //However we decided to make repairs the highest priority since the player has absolute control over it
-  //(they can switch repair off at any time) and only a limited number of workers can be assigned to each
-  //repair job (same as for building houses)
-  AssignRepairs;
-  AssignHousePlans;
-  AssignFieldworks;
-  AssignHouses;
+    //In KaM the order is:
+    //1. House plans
+    //2. Fieldworks
+    //3. Houses
+    //4. Repairs
+    //However we decided to make repairs the highest priority since the player has absolute control over it
+    //(they can switch repair off at any time) and only a limited number of workers can be assigned to each
+    //repair job (same as for building houses)
+    AssignRepairs;
+    AssignHousePlans;
+    AssignFieldworks;
+    AssignHouses;
+  finally
+    gPerfLogs.SectionLeave(psBuildlist);
+  end;
 end;
 
 

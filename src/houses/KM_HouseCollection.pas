@@ -51,7 +51,8 @@ uses
   KM_HouseInn, KM_HouseMarket, KM_HouseBarracks, KM_HouseSchool, 
   KM_HouseTownHall, KM_HouseWoodcutters,
   KM_Resource,
-  KM_GameTypes;
+  KM_GameTypes,
+  KM_DevPerfLog, KM_DevPerfLogTypes;
 
 
 { TKMHousesCollection }
@@ -381,12 +382,17 @@ procedure TKMHousesCollection.UpdateState(aTick: Cardinal);
 var
   I: Integer;
 begin
-  for I := Count - 1 downto 0  do
-    if not Houses[I].IsDestroyed then
-      Houses[I].UpdateState(aTick)
-    else
-      if FREE_POINTERS and (Houses[I].PointerCount = 0) then
-        fHouses.Delete(I); //Because no one needs this anymore it must DIE!!!!! :D
+  gPerfLogs.SectionEnter(psHouses, aTick);
+  try
+    for I := Count - 1 downto 0  do
+      if not Houses[I].IsDestroyed then
+        Houses[I].UpdateState(aTick)
+      else
+        if FREE_POINTERS and (Houses[I].PointerCount = 0) then
+          fHouses.Delete(I); //Because no one needs this anymore it must DIE!!!!! :D
+  finally
+    gPerfLogs.SectionLeave(psHouses);
+  end;
 end;
 
 

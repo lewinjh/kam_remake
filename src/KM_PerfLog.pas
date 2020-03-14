@@ -8,11 +8,11 @@ uses
 type
   TKMPerfSection = (pskTick,
                       pskHungarian, pskAIFields, pskFOW,
-                      pskHands, pskPathfinding, pskTerrain, psGIP, psScripting,
+                      pskHands, pskPathfinding, pskTerrain, psGIP, pskScripting,
                     pskRender,
                       psFOWCheck, psFOWCheck3, psFOWCheck5,
                       psRenderTer,
-                      psRenderTerBase, psUpdateVBO, psDoTiles, psDoWater, psDoTilesLayers, psDoOverlays, psDoLighting, psDoShadows,
+                      psRenderTerBase, pskUpdateVBO, psDoTiles, psDoWater, psDoTilesLayers, psDoOverlays, psDoLighting, psDoShadows,
                       psRenderFences, psRenderPlans,
                       psRenderOther, psRenderList, psRenderHands, psRenderFOW
                     );
@@ -32,7 +32,7 @@ const
 const
   SKIP_SECTION: set of TKMPerfSection = [pskHungarian, pskAIFields, pskFOW, psFOWCheck, psFOWCheck3, psFOWCheck5,
                                        psRenderOther, psRenderList, psRenderHands, psRenderFOW,
-                                       pskHands, pskPathfinding, pskTerrain, psGIP, psScripting];
+                                       pskHands, pskPathfinding, pskTerrain, psGIP, pskScripting];
 
 type
   //Log how much time each section takes and write results to a log file

@@ -2,7 +2,14 @@ unit KM_DevPerfLogStack;
 {$I KaM_Remake.inc}
 interface
 uses
-  Classes, Math, StrUtils, SysUtils, KromUtils, KM_DevPerfLogTypes;
+  Classes, Math, StrUtils, SysUtils, KromUtils,
+  {$IFDEF WDC}
+  System.Generics.Collections,
+  {$ENDIF}
+  {$IFDEF FPC}
+  Generics.Collections,
+  {$ENDIF}
+  KM_DevPerfLogTypes;
 
 
 type
@@ -10,14 +17,18 @@ type
   private
     fCount: Integer;
     fSection: TPerfSectionDev;
+    fEnabled: Boolean;
     fShow: Boolean;
 
+    procedure SetEnabled(aEnabled: Boolean);
     procedure SetShow(aShow: Boolean);
+    function GetEnabled: Boolean;
     function GetShow: Boolean;
   public
     constructor Create; overload;
     constructor Create(aSection: TPerfSectionDev); overload;
 
+    property Enabled: Boolean read GetEnabled write SetEnabled;
     property Show: Boolean read GetShow write SetShow;
   end;
 
@@ -31,11 +42,14 @@ type
       AvgBase, Middle: Single;
     end;
 
-    fPrevSection: Integer;
+    fPrevSection: TStack<Integer>;
     fThisSection: Integer;
 
     function GetTime(aID, aSectionI: Integer): Int64;
-    function GetSectionData(aSection: TPerfSectionDev): TKMSectionData;
+    function GetSectionData(aSection: TPerfSectionDev): TKMSectionData; overload;
+    function GetSectionData(aIndex: Integer): TKMSectionData; overload;
+
+    property SectionDataI[aIndex: Integer]: TKMSectionData read GetSectionData;
   public
     Enabled: Boolean;
     Display: Boolean;
@@ -69,15 +83,17 @@ type
     fEnterTime: Int64;
     fInTick: Boolean;
   protected
-    procedure SectionEnterI(aSection: Integer; aCount: Boolean = True);
+    procedure SectionEnterI(aSection: Integer; aRollback: Boolean = False);
     procedure SectionLeave;
+    procedure SectionRollback; overload;
   public
     HighPrecision: Boolean;
     constructor Create;
     procedure TickBegin;
-    procedure SectionEnter(aName: string; aCount: Boolean = True; aSection: TPerfSectionDev = psNone); overload;
-    procedure SectionEnter(aSection: TPerfSectionDev; aCount: Boolean = True); overload;
-    procedure SectionRollback;
+    procedure SectionEnter(aName: string; aSection: TPerfSectionDev = psNone); overload;
+    procedure SectionEnter(aSection: TPerfSectionDev); overload;
+    procedure SectionRollback(aName: string); overload;
+    procedure SectionRollback(aSection: TPerfSectionDev); overload;
     procedure TickEnd;
   end;
 
@@ -105,11 +121,27 @@ begin
 end;
 
 
+function TKMSectionData.GetEnabled: Boolean;
+begin
+  if Self = nil then Exit(False);
+
+  Result := fEnabled;
+end;
+
+
 function TKMSectionData.GetShow: Boolean;
 begin
   if Self = nil then Exit(False);
 
   Result := fShow;
+end;
+
+
+procedure TKMSectionData.SetEnabled(aEnabled: Boolean);
+begin
+  if Self = nil then Exit;
+
+  fEnabled := aEnabled;
 end;
 
 
@@ -127,12 +159,15 @@ begin
   inherited;
 
   fSectionNames := TStringList.Create;
+  fPrevSection := TStack<Integer>.Create;
 end;
 
 
 destructor TKMPerfLogStack.Destroy;
 begin
   fSectionNames.Free;
+  fPrevSection.Free;
+
   inherited;
 end;
 
@@ -168,6 +203,14 @@ begin
   end;
 
   aList.AddObject('[Total]', TObject(totalTime));
+end;
+
+
+function TKMPerfLogStack.GetSectionData(aIndex: Integer): TKMSectionData;
+begin
+  if Self = nil then Exit(nil);
+
+  Result := TKMSectionData(fSectionNames.Objects[aIndex]);
 end;
 
 
@@ -242,6 +285,7 @@ begin
     accum1 := aHeight;
     accum2 := aHeight;
     accum3 := aHeight;
+    tLast := 0;
 
     // Do not render newest time, it has not been complete nor stacked yet
     for K := cCount - 1 downto 0 do
@@ -329,8 +373,8 @@ var
 begin
   if not Enabled then Exit;
 
-  fPrevSection := -1;
   fThisSection := -1;
+  fPrevSection.Clear;
 
   Inc(fCount);
 
@@ -354,10 +398,9 @@ begin
 end;
 
 
-procedure TKMPerfLogStackCPU.SectionEnter(aName: string; aCount: Boolean = True; aSection: TPerfSectionDev = psNone);
+procedure TKMPerfLogStackCPU.SectionEnter(aName: string; aSection: TPerfSectionDev = psNone);
 var
   I: Integer;
-//  sectionData: TKMSectionData;
 begin
   if (Self = nil) or not Enabled or not fInTick then Exit;
 
@@ -375,47 +418,69 @@ begin
     SetLength(fCaptions, fSectionNames.Count);
   end;
 
-//  if aSection <> psNone then
-//  begin
-//    sectionData := TKMSectionData(fSectionNames.Objects[I]);
-//    sectionData.fSection := aSection;
-//    fSectionNames.Objects[I] := sectionData;
-//  end;
-
-  SectionEnterI(I, aCount);
+  SectionEnterI(I);
 end;
 
 
-procedure TKMPerfLogStackCPU.SectionEnter(aSection: TPerfSectionDev; aCount: Boolean = True);
+procedure TKMPerfLogStackCPU.SectionEnter(aSection: TPerfSectionDev);
 begin
-  SectionEnter(GetSectionName(aSection), aCount, aSection);
+  SectionEnter(GetSectionName(aSection), aSection);
+end;
+
+
+procedure TKMPerfLogStackCPU.SectionRollback(aSection: TPerfSectionDev);
+begin
+  SectionRollback(GetSectionName(aSection));
+end;
+
+
+procedure TKMPerfLogStackCPU.SectionRollback(aName: string);
+var
+  I: Integer;
+begin
+  I := fSectionNames.IndexOf(aName);
+
+  if (I = -1) or not SectionDataI[I].Enabled then Exit;
+
+  SectionRollback;
 end;
 
 
 procedure TKMPerfLogStackCPU.SectionRollback;
+var
+  section: Integer;
 begin
   if (Self = nil) or not Enabled or not fInTick then Exit;
 
-  SectionEnterI(fPrevSection, False);
+  section := -1;
+  if fPrevSection.Count > 0 then
+    section := fPrevSection.Pop;
+
+  SectionEnterI(section, True);
 end;
 
 
-procedure TKMPerfLogStackCPU.SectionEnterI(aSection: Integer; aCount: Boolean = True);
+procedure TKMPerfLogStackCPU.SectionEnterI(aSection: Integer; aRollback: Boolean = False);
 var
-  sectionData: TKMSectionData;
+  sectData: TKMSectionData;
 begin
-  if fThisSection <> -1 then
-    SectionLeave;
+  if (Self = nil) or not Enabled then Exit;
 
-  fPrevSection := fThisSection;
+  if not aRollback and ((aSection = -1) or not SectionDataI[aSection].Enabled) then Exit;
+
+  SectionLeave;
+
+  if not aRollback and (fThisSection <> -1) then
+    fPrevSection.Push(fThisSection);
+
   fThisSection := aSection;
 
-  if aCount then
+  if fThisSection = -1 then Exit;
+
+  if not aRollback then
   begin
-    sectionData := TKMSectionData(fSectionNames.Objects[fThisSection]);
-    sectionData.fCount := sectionData.fCount + 1;
-    fSectionNames.Objects[fThisSection] := sectionData;
-//    fSectionNames.Objects[fThisSection] := TObject(Integer(fSectionNames.Objects[fThisSection]) + 1);
+    sectData := SectionDataI[fThisSection];
+    sectData.fCount := sectData.fCount + 1;
   end;
 
   if HighPrecision then
@@ -447,29 +512,30 @@ end;
 procedure TKMPerfLogStackCPU.TickEnd;
 const
   LERP_AVG = 0.025;
-var
-  I: Integer;
+//var
+//  I: Integer;
 begin
   if not Enabled then Exit;
 
   SectionLeave;
 
   fThisSection := -1;
+  fPrevSection.Clear;
 
   // Stack times to render them simpler
 //  for I := 1 to fSectionNames.Count - 1 do
 //    fTimes[fCount - 1, I] := fTimes[fCount - 1, I - 1] + fTimes[fCount - 1, I];
 
   // Calculate averages for
-  if fCount > 0 then
-  for I := 0 to fSectionNames.Count - 1 do
-    fCaptions[I].AvgBase := Lerp(fCaptions[I].AvgBase, fTimes[fCount - 1, I], LERP_AVG);
-//
-  for I := 0 to fSectionNames.Count - 1 do
-  if I = 0 then
-    fCaptions[I].Middle := fCaptions[I].AvgBase / 2
-  else
-    fCaptions[I].Middle := (fCaptions[I-1].AvgBase + fCaptions[I].AvgBase) / 2;
+//  if fCount > 0 then
+//  for I := 0 to fSectionNames.Count - 1 do
+//    fCaptions[I].AvgBase := Lerp(fCaptions[I].AvgBase, fTimes[fCount - 1, I], LERP_AVG);
+////
+//  for I := 0 to fSectionNames.Count - 1 do
+//  if I = 0 then
+//    fCaptions[I].Middle := fCaptions[I].AvgBase / 2
+//  else
+//    fCaptions[I].Middle := (fCaptions[I-1].AvgBase + fCaptions[I].AvgBase) / 2;
 
   fInTick := False;
 end;
@@ -483,6 +549,7 @@ begin
   if not Enabled then Exit;
 
   fThisSection := -1;
+  fPrevSection.Clear;
 
   Inc(fCount);
 
@@ -523,7 +590,7 @@ procedure TKMPerfLogStackGFX.SectionRollback;
 begin
   if (Self = nil) or not Enabled then Exit;
 
-  SectionEnterI(fPrevSection, False);
+  SectionEnterI(fPrevSection.Pop, False);
 end;
 
 
@@ -531,10 +598,11 @@ procedure TKMPerfLogStackGFX.SectionEnterI(aSection: Integer; aCount: Boolean = 
 begin
   if (Self = nil) or not Enabled then Exit;
 
-  if fThisSection <> -1 then
-    SectionLeave;
+  SectionLeave;
 
-  fPrevSection := fThisSection;
+  if aCount and (fThisSection <> -1) then
+    fPrevSection.Push(fThisSection);
+
   fThisSection := aSection;
 
   if aCount then
@@ -549,6 +617,8 @@ var
   T: UInt64;
 begin
   if not Enabled then Exit;
+
+  if fThisSection = -1 then Exit;
 
   gRender.Query.QueriesEnd(fGPUQueryList[fThisSection]);
 
@@ -571,6 +641,7 @@ begin
 
   SectionLeave;
 
+  fPrevSection.Clear;
   fThisSection := -1;
 
   // Stack times to render them simpler
