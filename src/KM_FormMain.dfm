@@ -81,11 +81,13 @@ object FormMain: TFormMain
     HeaderStyle = hsThemed
     TabOrder = 1
     object cpLogs: TCategoryPanel
-      Top = 719
+      Top = 869
       Height = 24
       Caption = 'Logs'
       Collapsed = True
       TabOrder = 0
+      ExplicitTop = 719
+      ExplicitWidth = 298
       ExpandedHeight = 179
       object chkLogCommands: TCheckBox
         Left = 100
@@ -160,11 +162,13 @@ object FormMain: TFormMain
       end
     end
     object cpGraphicTweaks: TCategoryPanel
-      Top = 695
+      Top = 845
       Height = 24
       Caption = 'Graphic tweaks'
       Collapsed = True
       TabOrder = 1
+      ExplicitTop = 695
+      ExplicitWidth = 298
       ExpandedHeight = 124
       object Label1: TLabel
         Left = 101
@@ -262,11 +266,13 @@ object FormMain: TFormMain
       end
     end
     object cpUserInreface: TCategoryPanel
-      Top = 671
+      Top = 821
       Height = 24
       Caption = 'User Interface'
       Collapsed = True
       TabOrder = 2
+      ExplicitTop = 671
+      ExplicitWidth = 298
       ExpandedHeight = 72
       object chkUIControlsBounds: TCheckBox
         Left = 8
@@ -297,11 +303,13 @@ object FormMain: TFormMain
       end
     end
     object cpAI: TCategoryPanel
-      Top = 647
+      Top = 797
       Height = 24
       Caption = 'AI'
       Collapsed = True
       TabOrder = 3
+      ExplicitTop = 647
+      ExplicitWidth = 298
       ExpandedHeight = 166
       object Label5: TLabel
         Left = 106
@@ -462,7 +470,7 @@ object FormMain: TFormMain
     end
     object cpPerfLogs: TCategoryPanel
       Top = 97
-      Height = 550
+      Height = 700
       Caption = 'Perf Logs'
       TabOrder = 4
     end
@@ -474,6 +482,7 @@ object FormMain: TFormMain
       DoubleBuffered = True
       ParentDoubleBuffered = False
       TabOrder = 5
+      ExplicitWidth = 298
       ExpandedHeight = 215
       object Label2: TLabel
         Left = 100
@@ -637,6 +646,7 @@ object FormMain: TFormMain
       Caption = 'Game additional'
       Collapsed = True
       TabOrder = 6
+      ExplicitWidth = 298
       ExpandedHeight = 152
       object chkLoadUnsupSaves: TCheckBox
         Left = 12
@@ -685,6 +695,7 @@ object FormMain: TFormMain
       Height = 49
       Caption = 'Game '
       TabOrder = 7
+      ExplicitWidth = 298
       object chkSuperSpeed: TCheckBox
         Left = 8
         Top = 5

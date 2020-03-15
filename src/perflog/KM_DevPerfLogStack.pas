@@ -58,7 +58,8 @@ type
     procedure Clear;
     procedure GetSectionsStats(aList: TStringList);
     procedure Render(aLeft, aWidth, aHeight, aScaleY: Integer; aEmaAlpha: Single; aFrameBudget: Integer; aSmoothing: Boolean);
-    property SectionData[aSection: TPerfSectionDev]: TKMSectionData read GetSectionData;
+    property SectionData[aSection: TPerfSectionDev]: TKMSectionData read GetSectionData; default;
+    property Count: Integer read fCount;
     // Should have no virtual/abstract methods for the "if Self = nil then Exit" to work
     // Otherwise check does not work and causes AV
   end;
@@ -174,6 +175,8 @@ end;
 
 procedure TKMPerfLogStack.Clear;
 begin
+  if Self = nil then Exit; 
+
   fCount := 0;
   fSectionNames.Clear;
 end;
@@ -232,6 +235,7 @@ begin
 end;
 
 
+// Get total sections time before section (considering not shown sections)
 function TKMPerfLogStack.GetTime(aID, aSectionI: Integer): Int64;
 var
   I: Integer;
@@ -299,19 +303,15 @@ begin
         t2 := GetTime(L,I);
         vaFill[K*2]   := TKMPointF.New(aLeft + K + 0.5, aHeight + 0.5);
         vaFill[K*2+1] := TKMPointF.New(aLeft + K + 0.5, aHeight + 0.5 - t2 / 1000 / aFrameBudget * aScaleY);
-//        vaFill[K*2+1] := TKMPointF.New(aLeft + K + 0.5, aHeight + 0.5 - fTimes[L,I] / 1000 / aFrameBudget * aScaleY);
       end else
       begin
         t1 := GetTime(L,I-1);
         t2 := t1 + fTimes[L,I];
         vaFill[K*2]   := TKMPointF.New(aLeft + K + 0.5, aHeight + 0.5 - t1 / 1000 / aFrameBudget * aScaleY);
         vaFill[K*2+1] := TKMPointF.New(aLeft + K + 0.5, aHeight + 0.5 - t2 / 1000 / aFrameBudget * aScaleY);
-//        vaFill[K*2]   := TKMPointF.New(aLeft + K + 0.5, aHeight + 0.5 - fTimes[L,I-1] / 1000 / aFrameBudget * aScaleY);
-//        vaFill[K*2+1] := TKMPointF.New(aLeft + K + 0.5, aHeight + 0.5 - fTimes[L,I]   / 1000 / aFrameBudget * aScaleY);
       end;
 
       vaLine[K] := TKMPointF.New(aLeft + K + 0.5, aHeight + 0.5 - t2 / 1000 / aFrameBudget * aScaleY);
-//      vaLine[K] := TKMPointF.New(aLeft + K + 0.5, aHeight + 0.5 - fTimes[L,I] / 1000 / aFrameBudget * aScaleY);
 
       if L = fCount - 2 then
         tLast := T2;
@@ -334,9 +334,9 @@ begin
     gRenderAux.Line(vaFill, fillCol, 1, lmPairs);
 
     // Border
-    gRenderAux.Line(vaLine, TKMColor4f.White.Alpha50, 1, lmStrip);
+    gRenderAux.Line(vaLine, TKMColor4f.White.Alpha(0.2), 1, lmStrip);
 
-    fCaptions[I].AvgBase := Lerp(fCaptions[I].AvgBase, tLast{GetTime(fCount - 2, I)}, LERP_AVG);
+    fCaptions[I].AvgBase := Lerp(fCaptions[I].AvgBase, tLast, LERP_AVG);
 
     if isFirstSection then
       fCaptions[I].Middle := fCaptions[I].AvgBase / 2
@@ -383,7 +383,6 @@ begin
 
   for I := 0 to fSectionNames.Count - 1 do
   begin
-//    fSectionNames.Objects[I] := TObject(0);
     sectionData := TKMSectionData(fSectionNames.Objects[I]);
     if sectionData = nil then
       sectionData := TKMSectionData.Create
@@ -492,7 +491,7 @@ end;
 
 procedure TKMPerfLogStackCPU.SectionLeave;
 var
-  T: UInt64;
+  T: Int64;
 begin
   if not Enabled or not fInTick then Exit;
 
@@ -614,7 +613,7 @@ end;
 
 procedure TKMPerfLogStackGFX.SectionLeave;
 var
-  T: UInt64;
+  T: Int64;
 begin
   if not Enabled then Exit;
 

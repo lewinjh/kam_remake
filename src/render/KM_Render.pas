@@ -340,7 +340,7 @@ begin
   //There will be no change to image anyway
   if aValue = 0 then Exit;
 
-  TRender.BindTexture(0); // We have to reset texture to default (0), because it could be bind to any other texture (atlas)
+  BindTexture(0); // We have to reset texture to default (0), because it could be bind to any other texture (atlas)
 
   glLoadIdentity;
   glBlendFunc(GL_DST_COLOR, GL_ONE);
@@ -362,14 +362,11 @@ begin
 end;
 
 
-
-
-
 //Fake Render from Atlas, to force copy of it into video RAM, where it is supposed to be
 class procedure TRender.FakeRender(aID: Cardinal);
 begin
   glColor4ub(0, 0, 0, 0);
-  TRender.BindTexture(aID);
+  BindTexture(aID);
 
   glBegin(GL_TRIANGLES);
     glVertex2f(0, 0);

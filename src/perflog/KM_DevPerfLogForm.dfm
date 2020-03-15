@@ -44,7 +44,7 @@ object FormPerfLogs: TFormPerfLogs
     Width = 73
     Height = 22
     MaxValue = 100
-    MinValue = 2
+    MinValue = 1
     TabOrder = 1
     Value = 5
     OnChange = DoChange

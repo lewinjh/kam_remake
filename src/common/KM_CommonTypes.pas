@@ -112,7 +112,8 @@ type
     constructor New(aCol: TKMColor3f); overload;
     constructor New(aCol: TKMColor3f; aAlpha: Single); overload;
     class function White(): TKMColor4f; static;
-    class function Alpha50(): TKMColor4f; static;
+    function Alpha50(): TKMColor4f;
+    function Alpha(aAlpha: Single): TKMColor4f;
   end;
 
 const
@@ -170,9 +171,17 @@ begin
 end;
 
 
-class function TKMColor4f.Alpha50(): TKMColor4f;
+function TKMColor4f.Alpha50(): TKMColor4f;
 begin
+  Result := Self;
   Result.A := 0.5;
+end;
+
+
+function TKMColor4f.Alpha(aAlpha: Single): TKMColor4f;
+begin
+  Result := Self;
+  Result.A := aAlpha;
 end;
 
 

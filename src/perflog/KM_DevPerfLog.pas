@@ -3,10 +3,8 @@ unit KM_DevPerfLog;
 interface
 uses
   Classes, Math, StrUtils, SysUtils,
-//  {$IFDEF DESKTOP}
   Vcl.Forms, Vcl.Controls,
-//  {$ENDIF}
-  {KM_Vertexes, }KM_CommonTypes,
+  KM_CommonTypes,
   KM_DevPerfLogSingle, KM_DevPerfLogStack, KM_DevPerfLogTypes;
 
 
@@ -62,11 +60,7 @@ type
 
     procedure Render(aLeft, aWidth, aHeight: Integer);
     procedure SaveToFile(aFilename: string; aSaveThreshold: Integer = 10);
-//    {$IFDEF DESKTOP}
     procedure ShowForm(aContainer: TWinControl);
-//    {$ENDIF}
-
-//    class function GetSectionName(aSection: TPerfSectionDev): string;
   end;
 
 
@@ -104,7 +98,6 @@ const
     (Name: '   UpdateVBO';            ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:0.5;B:1);),
     (Name: 'Render.CPU';              ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:0;B:0);),
     (Name: 'Render.GFX';              ClassName: TKMPerfLogSingleGFX; Color: (R:1.0;G:1;B:0);),
-//    (Name: 'Render.GFX';              ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:1;B:0);),
     (Name: '   Game';                 ClassName: TKMPerfLogSingleCPU; Color: (R:0.75;G:0.75;B:0);),
     (Name: '      FOW';               ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.75;B:0);),
     (Name: '      Shadows';           ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:0;B:1.0);),
@@ -122,9 +115,7 @@ var
 
 implementation
 uses
-//  {$IFDEF DESKTOP}
   KM_DevPerfLogForm,
-//  {$ENDIF}
   TypInfo, KM_Defaults, KM_RenderUI, KM_RenderAux, KM_ResFonts, KM_Points;
 
 
@@ -225,34 +216,59 @@ procedure TKMPerfLogs.Clear;
 var
   PS: TPerfSectionDev;
 begin
+  fStackCPU.Clear;
+  fStackGFX.Clear;
   for PS := LOW_PERF_SECTION to High(TPerfSectionDev) do
     fItems[PS].Clear;
 end;
 
 
 procedure TKMPerfLogs.Render(aLeft, aWidth, aHeight: Integer);
+var
+  cCount, lastTick: Integer;
+
+  procedure UpdateCntNLastTick(aCount, aLastTick: Integer);
+  begin
+    if cCount < aCount then
+    begin
+      cCount := aCount;
+      lastTick := aLastTick;
+    end;
+  end;
+
 const
   PAD_SIDE = 40;
   PAD_Y = 10;
-  SCALE_Y = 512; // Draw chart 500 px high
+  SCALE_Y = 768; // Draw chart 500 px high
   EMA_ALPHA = 0.075; // Exponential Moving Average alpha, picked empirically
+  X_TICKS_CNT = 10;
+  X_TICKS_FREQ = 100;
 var
-  I: TPerfSectionDev;
-  K: Integer;
+  PS: TPerfSectionDev;
+  I, K, off, xTick, ticksCnt: Integer;
   needChart: Boolean;
-  y: Single;
-  ty: string;
+  x, y: Single;
+  lbl: string;
 begin
-  for I := LOW_PERF_SECTION to High(TPerfSectionDev) do
-    fItems[I].Render(aLeft + PAD_SIDE, aLeft + aWidth - PAD_SIDE * 2, aHeight - PAD_Y, SCALE_Y, EMA_ALPHA, FrameBudget, Smoothing);
+  lastTick := 0;
+  cCount := 0;
+
+  UpdateCntNLastTick(fStackCPU.Count, fStackCPU.Count);
+  UpdateCntNLastTick(fStackGFX.Count, fStackGFX.Count);
+
+  for PS := LOW_PERF_SECTION to High(TPerfSectionDev) do
+  begin
+    fItems[PS].Render(aLeft + PAD_SIDE, aLeft + aWidth - PAD_SIDE * 2, aHeight - PAD_Y, SCALE_Y, EMA_ALPHA, FrameBudget, Smoothing);
+    UpdateCntNLastTick(fItems[PS].Count, fItems[PS].EnterTick);
+  end;
 
   // Stacked chart
   fStackCPU.Render(aLeft + PAD_SIDE, aLeft + aWidth - PAD_SIDE * 2, aHeight - PAD_Y, SCALE_Y, EMA_ALPHA, FrameBudget, Smoothing);
 //  fStackGFX.Render(PAD_SIDE, aWidth - PAD_SIDE * 2, aHeight - PAD_Y, SCALE_Y, EMA_ALPHA, FrameBudget, Smoothing);
 //
   needChart := fStackCPU.Display or fStackGFX.Display;
-  for I := LOW_PERF_SECTION to High(TPerfSectionDev) do
-    needChart := needChart or fItems[I].Display;
+  for PS := LOW_PERF_SECTION to High(TPerfSectionDev) do
+    needChart := needChart or fItems[PS].Display;
 
   if needChart then
   begin
@@ -265,9 +281,28 @@ begin
       y := SCALE_Y / 10 * K;
       gRenderAux.Line(aLeft + PAD_SIDE + 0.5, aHeight - PAD_Y + 0.5 - y, aLeft + PAD_SIDE - 3.5, aHeight - PAD_Y + 0.5 - y, icWhite);
 
-//      ty := IntToStr(FrameBudget div 10 * K) + 'ms'; FormatFloat('##0.##', aSpeed)
-      ty := FormatFloat('##0.#', FrameBudget / 10 * K) + 'ms';
-      TKMRenderUI.WriteText(aLeft + PAD_SIDE - 5, Trunc(aHeight - PAD_Y - y - 8), 0, ty, fntMini, taRight);
+      lbl := FormatFloat('##0.#', FrameBudget / 10 * K) + 'ms';
+      TKMRenderUI.WriteText(aLeft + PAD_SIDE - 5, Trunc(aHeight - PAD_Y - y - 8), 0, lbl, fntMini, taRight);
+    end;
+
+    cCount := Min(cCount - 1, aWidth);
+    ticksCnt := (aWidth div X_TICKS_FREQ);
+    for I := 0 to ticksCnt - 1 do
+    begin
+      off := (lastTick mod X_TICKS_FREQ);
+      xTick := lastTick - off - I*X_TICKS_FREQ;
+
+      if xTick < 0 then Continue;
+
+      x := aLeft + PAD_SIDE + 0.5 + off + I*X_TICKS_FREQ;
+      y := aHeight - PAD_Y + 0.5;
+
+      //Tick text
+      TKMRenderUI.WriteText(Round(x), Round(y + 5), 0, IntToStr(xTick), fntMini, taCenter);
+      //Tick mark
+      gRenderAux.Line(x, y - 3, x, y + 3, icWhite);
+      //Tick vertical dashed line
+      gRenderAux.Line(x, y - SCALE_Y, x, y, icLightGray, $F0F0);
     end;
   end;
 end;

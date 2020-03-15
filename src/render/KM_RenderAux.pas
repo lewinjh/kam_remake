@@ -27,7 +27,6 @@ type
     procedure Line(const A, B: TKMPointF; aCol: TColor4; aPattern: Word = $FFFF); overload;
     procedure Line(x1, y1, x2, y2: Single; aCol: TColor4; aPattern: Word = $FFFF); overload;
     procedure Line(aPoints: TKMPointFArray; aColor: TKMColor4f; aThickness: Integer = -1; aLineMode: TKMLineMode = lmStrip; aPattern: Word = $FFFF); overload;
-    procedure LineStripPairs(aPoints: TKMPointFArray; aColor: TKMColor4f; aPattern: Word = $FFFF);
     procedure Triangle(x1, y1, x2, y2, X3, Y3: Single; aCol: TColor4);
     procedure TriangleOnTerrain(x1, y1, x2, y2, X3, Y3: Single; aCol: TColor4);
     procedure TileTerrainIDs(const aRect: TKMRect);
@@ -275,43 +274,20 @@ begin
 
   glColor4f(aColor.R, aColor.G, aColor.B, aColor.A);
 
-  glLineStipple(2, aPattern);
-
   case aLineMode of
     lmStrip:  glBegin(GL_LINE_STRIP);
     lmPairs:  glBegin(GL_LINES);
+    else      raise Exception.Create('Wrong LineMode');
   end;
 
   for I := 0 to High(aPoints) do
-  begin
     glVertex2f(aPoints[I].X, aPoints[I].Y);
-  end;
 
   glEnd;
 
   // Restore previous value for line width
   if aThickness <> -1 then
     glLineWidth(LineWidth);
-end;
-
-
-procedure TRenderAux.LineStripPairs(aPoints: TKMPointFArray; aColor: TKMColor4f; aPattern: Word = $FFFF);
-var
-  I: Integer;
-begin
-  TRender.BindTexture(0); // We have to reset texture to default (0), because it could be bind to any other texture (atlas)
-
-//  glColor4ubv(@aColor);
-  glColor4f(aColor.R, aColor.G, aColor.B, aColor.A);
-//  glColor4f(1,0,0, 1);
-  glLineStipple(2, aPattern);
-  glBegin(GL_LINE_STRIP);
-    glColor4f(1,0,0, 1);
-    for I := 0 to High(aPoints) do
-    begin
-      glVertex2f(aPoints[I].X, aPoints[I].Y);
-    end;
-  glEnd;
 end;
 
 
@@ -330,6 +306,7 @@ end;
 
 procedure TRenderAux.TriangleOnTerrain(x1, y1, x2, y2, X3, Y3: Single; aCol: TColor4);
 begin
+  TRender.BindTexture(0);
   glColor4ubv(@aCol);
 
   glBegin(GL_TRIANGLES);

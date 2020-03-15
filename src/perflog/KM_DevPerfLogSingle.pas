@@ -16,6 +16,8 @@ type
       Time: Int64;
       Tag: Integer;
     end;
+    function GetCount: Integer;
+    function GetEnterTick: Integer;
   protected
     fEnterTick: Integer;
     fEnterTag: Integer;
@@ -26,6 +28,8 @@ type
     Display: Boolean;
     Color: TKMColor4f;
     constructor Create; virtual; // Needs to be virtual (see more info inside)
+    property Count: Integer read GetCount;
+    property EnterTick: Integer read GetEnterTick;
     procedure SectionEnter(aTick: Integer = -1; aTag: Integer = 0);
     procedure SectionLeave;
     procedure Clear;
@@ -74,6 +78,22 @@ begin
   // Need a virtual constructor, so child classes could override it, so their constructors get called
   // when referenced as ClassName: TKMPerfLogClass; ClassName.Create
   // Otherwise, only base TObject class constructor gets called, yet objects are instances of ClassName
+end;
+
+
+function TKMPerfLogSingle.GetCount: Integer;
+begin
+  if Self = nil then Exit(0);
+
+  Result := fCount;
+end;
+
+
+function TKMPerfLogSingle.GetEnterTick: Integer;
+begin
+  if Self = nil then Exit(0);
+
+  Result := fEnterTick;
 end;
 
 
