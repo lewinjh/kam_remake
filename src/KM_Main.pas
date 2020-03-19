@@ -575,6 +575,8 @@ end;
 
 procedure TKMMain.Render;
 begin
+//  gPerfLogs.SectionEnter(psFrameFullC,
+
 
   if gGameApp <> nil then
     gGameApp.Render;

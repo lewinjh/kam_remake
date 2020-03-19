@@ -948,48 +948,43 @@ var
   ArmyQty: Integer;
   CKind, ArmyEmptyCKind: TKMChartArmyKind;
 begin
-  gPerfLogs.SectionEnter(psStats, aTick);
-  try
-    //Store player stats in Chart
+  //Store player stats in Chart
 
-    //Grow the list
-    if fChartCount >= fChartCapacity then
-    begin
-      fChartCapacity := fChartCount + 32;
-      SetLength(fChartHouses, fChartCapacity);
-      SetLength(fChartCitizens, fChartCapacity);
-      for I := WARE_MIN to WARE_MAX do
-        SetLength(fChartWares[I], fChartCapacity);
-      for CKind := Low(TKMChartArmyKind) to High(TKMChartArmyKind) do
-        for W := WARRIOR_MIN to WARRIOR_MAX do
-          SetLength(fChartArmy[CKind,W], fChartCapacity);
-    end;
-    fChartHouses[fChartCount] := GetHouseQty(htAny);
-    //We don't want recruits on the citizens Chart on the results screen.
-    //If we include recruits the citizens Chart drops by 50-100 at peacetime because all the recruits
-    //become soldiers, and continually fluctuates. Recruits dominate the Chart, meaning you can't use
-    //it for the intended purpose of looking at your villagers. The army Chart already indicates when
-    //you trained soldiers, no need to see big variations in the citizens Chart because of recruits.
-    fChartCitizens[fChartCount] := GetCitizensCount - GetUnitQty(utRecruit);
-
+  //Grow the list
+  if fChartCount >= fChartCapacity then
+  begin
+    fChartCapacity := fChartCount + 32;
+    SetLength(fChartHouses, fChartCapacity);
+    SetLength(fChartCitizens, fChartCapacity);
     for I := WARE_MIN to WARE_MAX do
-      fChartWares[I, fChartCount] := Wares[I].Produced;
-
+      SetLength(fChartWares[I], fChartCapacity);
     for CKind := Low(TKMChartArmyKind) to High(TKMChartArmyKind) do
       for W := WARRIOR_MIN to WARRIOR_MAX do
-      begin
-        ArmyQty := GetArmyChartValue(CKind,W);
-        fChartArmy[CKind, W, fChartCount] := ArmyQty;
-        // for Army empty we use special CKind, because Total equipped and Instantenious are empty simultaneously
-        ArmyEmptyCKind := GetArmyEmptyCKind(CKind);
-        if (fArmyEmpty[ArmyEmptyCKind,W] and (ArmyQty > 0)) then
-          fArmyEmpty[ArmyEmptyCKind,W] := False;
-      end;
-
-    Inc(fChartCount);
-  finally
-    gPerfLogs.SectionLeave(psStats);
+        SetLength(fChartArmy[CKind,W], fChartCapacity);
   end;
+  fChartHouses[fChartCount] := GetHouseQty(htAny);
+  //We don't want recruits on the citizens Chart on the results screen.
+  //If we include recruits the citizens Chart drops by 50-100 at peacetime because all the recruits
+  //become soldiers, and continually fluctuates. Recruits dominate the Chart, meaning you can't use
+  //it for the intended purpose of looking at your villagers. The army Chart already indicates when
+  //you trained soldiers, no need to see big variations in the citizens Chart because of recruits.
+  fChartCitizens[fChartCount] := GetCitizensCount - GetUnitQty(utRecruit);
+
+  for I := WARE_MIN to WARE_MAX do
+    fChartWares[I, fChartCount] := Wares[I].Produced;
+
+  for CKind := Low(TKMChartArmyKind) to High(TKMChartArmyKind) do
+    for W := WARRIOR_MIN to WARRIOR_MAX do
+    begin
+      ArmyQty := GetArmyChartValue(CKind,W);
+      fChartArmy[CKind, W, fChartCount] := ArmyQty;
+      // for Army empty we use special CKind, because Total equipped and Instantenious are empty simultaneously
+      ArmyEmptyCKind := GetArmyEmptyCKind(CKind);
+      if (fArmyEmpty[ArmyEmptyCKind,W] and (ArmyQty > 0)) then
+        fArmyEmpty[ArmyEmptyCKind,W] := False;
+    end;
+
+  Inc(fChartCount);
 end;
 
 

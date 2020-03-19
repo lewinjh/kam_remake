@@ -135,7 +135,7 @@ uses
   KM_FormLogistics,
   KM_Main, KM_Controls, KM_Log, KM_Sound, KM_GameInputProcess, KM_GameInputProcess_Multi, KM_GameSavedReplays,
   KM_InterfaceDefaults, KM_GameCursor, KM_ResTexts,
-  KM_Saves, KM_CommonUtils, KM_RandomChecks, KM_DevPerfLog;
+  KM_Saves, KM_CommonUtils, KM_RandomChecks, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 
 { Creating everything needed for MainMenu, game stuff is created on StartGame }
@@ -1038,10 +1038,7 @@ begin
   gRender.BeginFrame;
 
   if gGame <> nil then
-  begin
-    gGame.Render(gRender);
-//    gPerfLogs.Render(TOOLBAR_WIDTH + 10, gMain.FormMain.RenderArea.Width - 10, gMain.FormMain.RenderArea.Height - 10);
-  end
+    gGame.Render(gRender)
   else
     fMainMenuInterface.Paint;
 

@@ -1389,7 +1389,7 @@ end;
 
 procedure TKMBuildList.UpdateState(aTick: Cardinal);
 begin
-  gPerfLogs.SectionEnter(psBuildlist, aTick);
+//  gPerfLogs.SectionEnter(psBuildlist, aTick);
   try
     HouseList.UpdateState;
     fRepairList.UpdateState;
@@ -1419,7 +1419,7 @@ begin
     AssignFieldworks;
     AssignHouses;
   finally
-    gPerfLogs.SectionLeave(psBuildlist);
+//    gPerfLogs.SectionLeave(psBuildlist);
   end;
 end;
 

@@ -346,9 +346,9 @@ begin
     // Sections captions
     if (fCaptions[I].AvgBase - fCaptions[I].Middle) / 1000 / aFrameBudget * aScaleY > HALF_CAPTION_HEIGHT then
     begin
-      ty := Round(fCaptions[I].Middle / 1000 / aFrameBudget * aScaleY);
+      ty := EnsureRange(Round(fCaptions[I].Middle / 1000 / aFrameBudget * aScaleY), 0, 5000);
       TKMRenderUI.WriteText(aLeft + 4, Trunc(aHeight + 0.5 - ty - 7), 0,
-        fSectionNames[I] + ' x' + IntToStr(sectionData.fCount), fntMini, taLeft);
+        Trim(SECTION_INFO[sectionData.fSection].Name) + ' x' + IntToStr(sectionData.fCount), fntMini, taLeft);
     end;
 
     prevSection := I;
@@ -401,7 +401,7 @@ procedure TKMPerfLogStackCPU.SectionEnter(aName: string; aSection: TPerfSectionD
 var
   I: Integer;
 begin
-  if (Self = nil) or not Enabled or not fInTick then Exit;
+  if (Self = nil) or not Enabled {or not fInTick} then Exit;
 
   Assert(aName <> '');
 
@@ -449,7 +449,7 @@ procedure TKMPerfLogStackCPU.SectionRollback;
 var
   section: Integer;
 begin
-  if (Self = nil) or not Enabled or not fInTick then Exit;
+  if (Self = nil) or not Enabled {or not fInTick} then Exit;
 
   section := -1;
   if fPrevSection.Count > 0 then
@@ -493,7 +493,7 @@ procedure TKMPerfLogStackCPU.SectionLeave;
 var
   T: Int64;
 begin
-  if not Enabled or not fInTick then Exit;
+  if not Enabled {or not fInTick} then Exit;
 
   if fThisSection = -1 then Exit;
 
