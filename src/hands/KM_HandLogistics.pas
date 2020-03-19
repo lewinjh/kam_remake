@@ -55,6 +55,7 @@ type
     Loc_Unit: TKMUnit;
     BeingPerformed: Cardinal; //Can be performed multiple times for dtAlways
     IsDeleted: Boolean; //So we don't get pointer issues
+    NotifyLocHouseOnClose: Boolean; //Should we notify Loc_House when demand is closed (house could need to do some his actions on that)
     Item: TListItem;
   end;
 
@@ -146,9 +147,13 @@ type
 
     function GetDemandsCnt(aHouse: TKMHouse; aResource: TKMWareType; aType: TKMDemandType; aImp: TKMDemandImportance): Integer;
     procedure AddDemand(aHouse: TKMHouse; aUnit: TKMUnit; aResource: TKMWareType; aCount: Integer; aType: TKMDemandType; aImp: TKMDemandImportance);
-    function TryRemoveDemand(aHouse: TKMHouse; aResource: TKMWareType; aCount: Word): Word;
+    function TryRemoveDemand(aHouse: TKMHouse; aResource: TKMWareType; aCount: Word; aRemoveBeingPerformed: Boolean = True): Word; overload;
+    function TryRemoveDemand(aHouse: TKMHouse; aResource: TKMWareType; aCount: Word; out aPlannedToRemove: Word;
+                             aRemoveBeingPerformed: Boolean = True): Word; overload;
     procedure RemDemand(aHouse: TKMHouse); overload;
     procedure RemDemand(aUnit: TKMUnit); overload;
+
+    function IsDeliveryAlowed(aIQ: Integer): Boolean;
 
     function GetDeliveriesToHouseCnt(aHouse: TKMHouse; aWareType: TKMWareType): Integer;
 
@@ -738,6 +743,16 @@ begin
 end;
 
 
+//Check if delivery is allowed to continue
+function TKMDeliveries.IsDeliveryAlowed(aIQ: Integer): Boolean;
+begin
+  if fQueue[aIQ].DemandID <> 0 then
+    Result := not fDemand[fQueue[aIQ].DemandId].IsDeleted //Delivery could be cancelled because of Demand marked as Deleted
+  else
+    Result := False; //Not allowed delivery if demandId is underfined (= 0)
+end;
+
+
 //Remove Demand from the list
 // List is stored without sorting so we parse it to find all entries..
 procedure TKMDeliveries.RemDemand(aUnit: TKMUnit);
@@ -780,27 +795,63 @@ begin
 end;
 
 
-//Attempt to remove aCount demands from this house and report the number (only ones that are not yet being performed)
-function TKMDeliveries.TryRemoveDemand(aHouse: TKMHouse; aResource: TKMWareType; aCount: Word): Word;
+function TKMDeliveries.TryRemoveDemand(aHouse: TKMHouse; aResource: TKMWareType; aCount: Word; aRemoveBeingPerformed: Boolean = True): Word;
+var
+  plannedToRemove: Word;
+begin
+  Result := TryRemoveDemand(aHouse, aResource, aCount, plannedToRemove);
+end;
+
+
+//Attempt to remove aCount demands from this house and report the number
+//if there are some being performed, then mark them as deleted, so they will be cancelled as soon as possible
+function TKMDeliveries.TryRemoveDemand(aHouse: TKMHouse; aResource: TKMWareType; aCount: Word; out aPlannedToRemove: Word;
+                                       aRemoveBeingPerformed: Boolean = True): Word;
 var
   I: Integer;
+  PlannedIDs: array of Integer;
 begin
   Result := 0;
+  aPlannedToRemove := 0;
 
   if gGame.IsMapEditor then
     Exit;
 
   if aCount = 0 then Exit;
   Assert(aHouse <> nil);
-  for I := 1 to fDemandCount do
-    if (fDemand[I].Loc_House = aHouse) and (fDemand[I].Ware = aResource) then
+  for I := fDemandCount downto 1 do
+    if (fDemand[I].Loc_House = aHouse)
+      and (fDemand[I].Ware = aResource)
+      and not fDemand[I].IsDeleted then
+    begin
       if fDemand[I].BeingPerformed = 0 then
       begin
         CloseDemand(I); //Clear up demand
         Inc(Result);
-        if Result = aCount then
-          Exit; //We have removed enough demands
+      end
+      else
+      begin
+        //Collect all performing demands first (but limit it with `NEEDED - FOUND`)
+        if aRemoveBeingPerformed and (aPlannedToRemove < aCount - Result) then
+        begin
+          if Length(PlannedIDs) = 0 then
+            SetLength(PlannedIDs, aCount); //Set length of PlannedIDs only once
+
+          PlannedIDs[aPlannedToRemove] := I;
+          Inc(aPlannedToRemove);
+        end;
       end;
+      if Result = aCount then
+        Break; //We have removed enough demands
+    end;
+
+  if aRemoveBeingPerformed then
+    //If we didn't find enought not performed demands, mark found performing demands as deleted to be removed soon
+    for I := 0 to Min(aPlannedToRemove, aCount - Result) - 1 do
+    begin
+      fDemand[PlannedIDs[I]].IsDeleted := True;
+      fDemand[PlannedIDs[I]].NotifyLocHouseOnClose := aRemoveBeingPerformed;
+    end;
 end;
 
 
@@ -1266,11 +1317,11 @@ begin
   if (fDemand[iD].Loc_House <> nil)
     and (fDemand[iD].Loc_House.HouseType = htTownHall) then
   begin
-    //Delivering gold to TH - if there are already more then 300 gold, then make this delivery very low priority
-    if (fDemand[iD].Loc_House.CheckResIn(fOffer[iO].Ware) > 300) then
-      aBidValue := aBidValue + 9000
+    //Delivering gold to TH - if there are already more then 500 gold, then make this delivery very low priority
+    if (fDemand[iD].Loc_House.CheckResIn(fOffer[iO].Ware) > 500) then
+      aBidValue := aBidValue + 5000
     else
-      aBidValue := aBidValue + 5; //Add small value, so it will not have so big advantage above other houses
+      aBidValue := aBidValue + 2; //Add small value, so it will not have so big advantage above other houses
   end;
 
   //Delivering weapons from store to barracks, make it lowest priority when there are >50 of that weapon in the barracks.
@@ -1374,7 +1425,7 @@ end;
 procedure TKMDeliveries.DeliveryFindBestDemand(aSerf: TKMUnitSerf; aDeliveryId: Integer; aResource: TKMWareType;
                                                out aToHouse: TKMHouse; out aToUnit: TKMUnit; out aForceDelivery: Boolean);
 
-  function ValidBestDemand(iD: Integer): Boolean;
+  function ValidBestDemand(iD, iOldID: Integer): Boolean;
   var
     I: Integer;
     H: TKMHouse;
@@ -1384,12 +1435,14 @@ procedure TKMDeliveries.DeliveryFindBestDemand(aSerf: TKMUnitSerf; aDeliveryId: 
               ((fDemand[iD].Ware = wtFood) and (aResource in [wtBread, wtSausages, wtWine, wtFish]));
 
     //Check if unit is alive
-    Result := Result and ((fDemand[iD].Loc_Unit = nil) or not fDemand[iD].Loc_Unit.IsDeadOrDying);
+    Result := Result and ((fDemand[iD].Loc_Unit = nil)
+                          or (not fDemand[iD].Loc_Unit.IsDeadOrDying and (fDemand[iD].Loc_Unit <> fDemand[iOldID].Loc_Unit)));
 
     //If Demand house should abandon delivery
     Result := Result and ((fDemand[iD].Loc_House = nil)
                           or not fDemand[iD].Loc_House.IsComplete
-                          or not fDemand[iD].Loc_House.ShouldAbandonDeliveryTo(aResource));
+                          or (not fDemand[iD].Loc_House.ShouldAbandonDeliveryTo(aResource)
+                             and (fDemand[iD].Loc_House <> fDemand[iOldID].Loc_House)));
 
     //If Demand aren't reserved already
     Result := Result and ((fDemand[iD].DemandType = dtAlways) or (fDemand[iD].BeingPerformed = 0));
@@ -1413,24 +1466,26 @@ procedure TKMDeliveries.DeliveryFindBestDemand(aSerf: TKMUnitSerf; aDeliveryId: 
 
   function FindBestDemandId(): Integer;
   var
-    iD: Integer;
+    iD, OldDemandId: Integer;
     Bid, BestBid: Single;
     BestImportance: TKMDemandImportance;
     DeliverToUnit: Boolean;
   begin
     Result := -1;
     aForceDelivery := False;
+    OldDemandId := fQueue[aDeliveryId].DemandID;
     BestImportance := Low(TKMDemandImportance);
     BestBid := MaxSingle;
-    DeliverToUnit := fDemand[fQueue[aDeliveryId].DemandID].Loc_Unit <> nil;
+    DeliverToUnit := fDemand[OldDemandId].Loc_Unit <> nil;
     //Mark that delivery as IsFromUnit (Serf), since we are looking for other destination while in delivery process
     fQueue[aDeliveryId].IsFromUnit := True;
     //Try to find house or unit demand first (not storage)
     for iD := 1 to fDemandCount do
       if (fDemand[iD].Ware <> wtNone)
-        and (iD <> fQueue[aDeliveryId].DemandID)
+        and (iD <> OldDemandId)
+        and not fDemand[iD].IsDeleted
         and (fDemand[iD].Importance >= BestImportance)
-        and ValidBestDemand(iD)
+        and ValidBestDemand(iD, OldDemandId)
         and TryCalculateBidBasic(aSerf.UID, aSerf.CurrPosition, 1, htNone, aSerf.Owner, iD, Bid, nil,
                                  DeliverToUnit or fQueue[aDeliveryId].IsFromUnit)
         and ((Bid < BestBid) or (fDemand[iD].Importance > BestImportance)) then //Calc bid to find the best demand
@@ -1444,7 +1499,8 @@ procedure TKMDeliveries.DeliveryFindBestDemand(aSerf: TKMUnitSerf; aDeliveryId: 
     if Result = -1 then
       for iD := 1 to fDemandCount do
         if (fDemand[iD].Ware = wtAll)
-          and (iD <> fQueue[aDeliveryId].DemandID)
+          and (iD <> OldDemandId)
+          and not fDemand[iD].IsDeleted
           and (fDemand[iD].Loc_House.DeliveryMode = dmDelivery)
           and (fDemand[iD].Loc_House is TKMHouseStore)
           and not TKMHouseStore(fDemand[iD].Loc_House).NotAcceptFlag[aResource]
@@ -1460,6 +1516,7 @@ procedure TKMDeliveries.DeliveryFindBestDemand(aSerf: TKMUnitSerf; aDeliveryId: 
     if Result = -1 then
       for iD := 1 to fDemandCount do
         if (fDemand[iD].Ware = wtAll)
+          and not fDemand[iD].IsDeleted
           and not fDemand[iD].Loc_House.IsDestroyed //choose between all storages, including current delivery. But not destroyed
           and TryCalculateBidBasic(aSerf.UID, aSerf.CurrPosition, 1, htNone, aSerf.Owner, iD, Bid, nil,
                                    DeliverToUnit or fQueue[aDeliveryId].IsFromUnit) //Choose the closest storage
@@ -1498,9 +1555,7 @@ begin
     begin
       // Remove old demand
       Dec(fDemand[OldDemandId].BeingPerformed);
-      if (fDemand[OldDemandId].BeingPerformed = 0)
-        and (fDemand[OldDemandId].IsDeleted
-          or ((fDemand[OldDemandId].Loc_House <> nil) and (fDemand[OldDemandId].Loc_House.HouseType = htTownHall))) then
+      if (fDemand[OldDemandId].BeingPerformed = 0) and fDemand[OldDemandId].IsDeleted then
         CloseDemand(OldDemandId);
 
       UpdateDemandItem(OldDemandId);
@@ -1674,6 +1729,8 @@ begin
 
   Dec(fDemand[iD].BeingPerformed); //Remove reservation
 
+  fDemand[iD].NotifyLocHouseOnClose := False; //No need to notify Loc_House since we already delivered item
+
   if (fDemand[iD].DemandType = dtOnce)
     or (fDemand[iD].IsDeleted and (fDemand[iD].BeingPerformed = 0)) then
     CloseDemand(iD); //Remove resource from Demand list
@@ -1730,6 +1787,11 @@ end;
 procedure TKMDeliveries.CloseDemand(aID: Integer);
 begin
   Assert(fDemand[aID].BeingPerformed = 0);
+
+  if fDemand[aID].NotifyLocHouseOnClose and (fDemand[aID].Loc_House <> nil) then
+    fDemand[aID].Loc_House.DecResourceDelivery(fDemand[aID].Ware);
+
+  fDemand[aID].NotifyLocHouseOnClose := False;
   fDemand[aID].Ware := wtNone;
   fDemand[aID].DemandType := dtOnce;
   fDemand[aID].Importance := Low(TKMDemandImportance);
@@ -1797,6 +1859,7 @@ begin
     if Loc_Unit  <> nil then SaveStream.Write(Loc_Unit.UID ) else SaveStream.Write(Integer(0));
     SaveStream.Write(BeingPerformed);
     SaveStream.Write(IsDeleted);
+    SaveStream.Write(NotifyLocHouseOnClose);
   end;
 
   SaveStream.PlaceMarker('Queue');
@@ -1894,6 +1957,7 @@ begin
     LoadStream.Read(Loc_Unit, 4);
     LoadStream.Read(BeingPerformed);
     LoadStream.Read(IsDeleted);
+    LoadStream.Read(NotifyLocHouseOnClose);
   end;
 
   LoadStream.CheckMarker('Queue');

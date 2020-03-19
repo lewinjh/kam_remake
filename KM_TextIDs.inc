@@ -624,6 +624,8 @@ TX_MAPED_COPY_PASTE_HFLIP_HINT = 495; //Horizontally flip selection
 TX_MAPED_COPY_PASTE_HINT = 496; //Paste terrain
 TX_MAPED_COPY_COPY_HINT = 497; //Copy terrain
 TX_MAPED_COPY_TITLE = 498; //Copy/paste
+TX_MAPED_TERRAIN_OVERLAYS = 1396; //Tile overlays
+TX_MAPED_TERRAIN_HINTS_OVERLAYS = 1397; //Set tile overlays. Use LMB for safe mode and LMB+Shift to overwrite roads
 TX_MAPED_COPY = 673; //Copy
 TX_MAPED_PASTE = 674; //Paste
 TX_MAPED_PASTE_APPLY = 675; //Paste apply
@@ -1176,9 +1178,11 @@ TX_MENU_MAP_TYPE = 1122; //Map type
 TX_MENU_SP_MAP_SCENARIO = 1123; //Scenario map
 TX_MENU_MAP_PLAYABLE_AS_SP = 1124; //Playable as SP
 
-TX_MAPED_OBJ_DESC_CHOPPABLE = 1125; //Choppable tree
-TX_MAPED_OBJ_DESC_BLOCK_DIAG = 1126; //Blocks diagonal walking
-TX_MAPED_OBJ_DESC_BLOCK_ALL = 1127; //Blocks walking and building
+TX_MAPED_OBJ_CHOPPABLE_HINT = 1125; //Choppable tree
+TX_MAPED_OBJ_BLOCK_WALK_DIAG_HINT = 1126; //Blocks diagonal walking
+TX_MAPED_OBJ_BLOCK_ALL_HINT = 1127; //Blocks everything except bulding
+TX_MAPED_OBJ_BLOCK_BUILD_HINT = 1394; //Blocks building
+TX_MAPED_OBJ_BLOCK_WALK_BUILD_HINT = 1395; //Blocks walking and building
 
 TX_MAPED_MISSION_PARAMETERS_BTN = 1145; //Mission|parameters
 TX_MAPED_MISSION_PARAMETERS_BTN_HINT = 1146; //Modify mission parameters

@@ -105,12 +105,13 @@ type
     fIsClosedForWorker: Boolean; // house is closed for worker. If worker is already occupied it, then leave house
 
     fResourceIn: array [1..4] of Byte; //Resource count in input
-    fResourceDeliveryCount: array[1..4] of Word; //Count of the resources we have ordered for the input (used for ware distribution)
+    //Count of the resources we have ordered for the input (used for ware distribution)
+    fResourceDeliveryCount: array[1..4] of Word; // = fResourceIn + Demands count
     fResourceOut: array [1..4] of Byte; //Resource count in output
     fResourceOrder: array [1..4] of Word; //If HousePlaceOrders=true then here are production orders
     fResourceOutPool: array[0..19] of Byte;
     fLastOrderProduced: Byte;
-    fResOrderDesired: array [1..4] of Single;
+//    fResOrderDesired: array [1..4] of Single;
 
     fIsOnSnow: Boolean;
     fSnowStep: Single;
@@ -118,7 +119,6 @@ type
     fIsDestroyed: Boolean;
     fIsBeingDemolished: Boolean; //To prevent script calling HouseDestroy on same house within OnHouseDestroyed action.
                                  //Not saved because it is set and used within the same tick only.
-    RemoveRoadWhenDemolish: Boolean;
     fPointerCount: Cardinal;
     fTimeSinceUnoccupiedReminder: Integer;
     fDisableUnoccupiedMessage: Boolean;
@@ -155,6 +155,11 @@ type
     procedure SetNewDeliveryMode(aValue: TKMDeliveryMode); virtual;
     procedure CheckTakeOutDeliveryMode; virtual;
     function GetDeliveryModeForCheck(aImmidiate: Boolean): TKMDeliveryMode;
+
+    procedure SetResourceDeliveryCount(aIndex: Integer; aCount: Word);
+    function GetResourceDeliveryCount(aIndex: Integer): Word;
+
+    property ResDeliveryCnt[aIndex: Integer]: Word read GetResourceDeliveryCount write SetResourceDeliveryCount;
   public
     CurrentAction: TKMHouseAction; //Current action, withing HouseTask or idle
     WorkAnimStep: Cardinal; //Used for Work and etc.. which is not in sync with Flags
@@ -232,6 +237,8 @@ type
 
     procedure SetState(aState: TKMHouseState);
     function GetState: TKMHouseState;
+
+    procedure DecResourceDelivery(aWare: TKMWareType); virtual;
 
     function CheckResIn(aWare: TKMWareType): Word; virtual;
     function CheckResOut(aWare: TKMWareType): Word; virtual;
@@ -493,14 +500,13 @@ begin
     fResourceIn[I] := 0;
     fResourceDeliveryCount[I] := 0;
     fResourceOut[I] := 0;
-    fResourceOrder[I] :=0;
+    fResourceOrder[I] := 0;
   end;
 
   for I := 0 to 19 do
     fResourceOutPool[I] := 0;
 
   fIsDestroyed := False;
-  RemoveRoadWhenDemolish := gTerrain.Land[Entrance.Y, Entrance.X].TileOverlay <> toRoad;
   fPointerCount := 0;
   fTimeSinceUnoccupiedReminder := TIME_BETWEEN_MESSAGES;
 
@@ -552,7 +558,7 @@ begin
   for I:=1 to 4 do LoadStream.Read(fResourceDeliveryCount[I]);
   for I:=1 to 4 do LoadStream.Read(fResourceOut[I]);
   for I:=1 to 4 do LoadStream.Read(fResourceOrder[I], SizeOf(fResourceOrder[I]));
-  for I:=1 to 4 do LoadStream.Read(fResOrderDesired[I], SizeOf(fResOrderDesired[I]));
+//  for I:=1 to 4 do LoadStream.Read(fResOrderDesired[I], SizeOf(fResOrderDesired[I]));
 
   if fType in HOUSE_WORKSHOP then
     LoadStream.Read(fResourceOutPool, 20);
@@ -563,7 +569,6 @@ begin
   LoadStream.Read(fIsOnSnow);
   LoadStream.Read(fSnowStep);
   LoadStream.Read(fIsDestroyed);
-  LoadStream.Read(RemoveRoadWhenDemolish);
   LoadStream.Read(fPointerCount);
   LoadStream.Read(fTimeSinceUnoccupiedReminder);
   LoadStream.Read(fDisableUnoccupiedMessage);
@@ -644,7 +649,7 @@ begin
       else        begin
                     DemandsCnt := GetResDistribution(I);
                     AddDemand(Self, nil, Res, DemandsCnt, dtOnce, diNorm); //Every new house needs 5 resource units
-                    Inc(fResourceDeliveryCount[I], DemandsCnt); //Keep track of how many resources we have on order (for distribution of wares)
+                    ResDeliveryCnt[I] := ResDeliveryCnt[I] + DemandsCnt; //Keep track of how many resources we have on order (for distribution of wares)
                   end;
     end;
   end;
@@ -743,7 +748,7 @@ begin
     gTerrain.AddHouseRemainder(fPosition, fType, fBuildState);
 
   BuildingRepair := False; //Otherwise labourers will take task to repair when the house is destroyed
-  if RemoveRoadWhenDemolish and ((BuildingState in [hbsNoGlyph, hbsWood]) or IsSilent) then
+  if (BuildingState in [hbsNoGlyph, hbsWood]) or IsSilent then
   begin
     if gTerrain.Land[Entrance.Y, Entrance.X].TileOverlay = toRoad then
     begin
@@ -830,6 +835,18 @@ begin
         gHands[fOwner].Deliveries.Queue.AddOffer(Self, Res, ResCnt);
     end;
   end;
+end;
+
+
+procedure TKMHouse.SetResourceDeliveryCount(aIndex: Integer; aCount: Word);
+begin
+  fResourceDeliveryCount[aIndex] := EnsureRange(aCount, 0, High(Word));
+end;
+
+
+function TKMHouse.GetResourceDeliveryCount(aIndex: Integer): Word;
+begin
+  Result := fResourceDeliveryCount[aIndex];
 end;
 
 
@@ -1370,16 +1387,16 @@ end;
 //Input value is integer because we might get a -100 order from outside and need to fit it to range
 //properly
 procedure TKMHouse.SetResOrder(aID: Byte; aValue: Integer);
-var
-  I: Integer;
-  TotalDesired: Integer;
+//var
+//  I: Integer;
+//  TotalDesired: Integer;
 begin
   fResourceOrder[aID] := EnsureRange(aValue, 0, MAX_WARES_ORDER);
 
   //Calculate desired production ratio (so that we are not affected by fResourceOrder which decreases till 0)
-  TotalDesired := fResourceOrder[1] + fResourceOrder[2] + fResourceOrder[3] + fResourceOrder[4];
-  for I := 1 to 4 do
-    fResOrderDesired[I] := fResourceOrder[I] / TotalDesired;
+//  TotalDesired := fResourceOrder[1] + fResourceOrder[2] + fResourceOrder[3] + fResourceOrder[4];
+//  for I := 1 to 4 do
+//    fResOrderDesired[I] := fResourceOrder[I] / TotalDesired;
 
   fNeedIssueOrderCompletedMsg := False;
   fOrderCompletedMsgIssued := False;
@@ -1393,9 +1410,9 @@ function TKMHouse.PickOrder: Byte;
 var
   I, Res: Byte;
   Ware: TKMWareType;
-  BestBid: Single;
-  TotalLeft: Integer;
-  LeftRatio: array [1..4] of Single;
+//  BestBid: Single;
+//  TotalLeft: Integer;
+//  LeftRatio: array [1..4] of Single;
 begin
   Result := 0;
 
@@ -1417,37 +1434,37 @@ begin
       end;
     end;
 
-  if WARFARE_ORDER_PROPORTIONAL then
-  begin
-    //See the ratio between items that were made (since last order amount change)
-    TotalLeft := fResourceOrder[1] + fResourceOrder[2] + fResourceOrder[3] + fResourceOrder[4];
-    for I := 1 to 4 do
-      LeftRatio[I] := fResourceOrder[I] / TotalLeft;
-
-    //Left   Desired
-    //0.5    0.6
-    //0.3    0.3
-    //0.2    0.1
-
-    //Find order that which production ratio is the smallest
-    BestBid := -MaxSingle;
-    for I := 1 to 4 do
-    if (ResOrder[I] > 0) then //Player has ordered some of this
-    begin
-      Ware := gRes.Houses[fType].ResOutput[I];
-
-      if (CheckResOut(Ware) < MAX_WARES_IN_HOUSE) //Output of this is not full
-      //Check we have enough wares to produce this weapon. If both are the same type check > 1 not > 0
-      and ((WarfareCosts[Ware,1] <> WarfareCosts[Ware,2]) or (CheckResIn(WarfareCosts[Ware,1]) > 1))
-      and ((WarfareCosts[Ware,1] = wtNone) or (CheckResIn(WarfareCosts[Ware,1]) > 0))
-      and ((WarfareCosts[Ware,2] = wtNone) or (CheckResIn(WarfareCosts[Ware,2]) > 0))
-      and (LeftRatio[I] - fResOrderDesired[I] > BestBid) then
-      begin
-        Result := I;
-        BestBid := LeftRatio[Result] - fResOrderDesired[Result];
-      end;
-    end;
-  end;
+//  if WARFARE_ORDER_PROPORTIONAL then
+//  begin
+//    //See the ratio between items that were made (since last order amount change)
+//    TotalLeft := fResourceOrder[1] + fResourceOrder[2] + fResourceOrder[3] + fResourceOrder[4];
+//    for I := 1 to 4 do
+//      LeftRatio[I] := fResourceOrder[I] / TotalLeft;
+//
+//    //Left   Desired
+//    //0.5    0.6
+//    //0.3    0.3
+//    //0.2    0.1
+//
+//    //Find order that which production ratio is the smallest
+//    BestBid := -MaxSingle;
+//    for I := 1 to 4 do
+//    if (ResOrder[I] > 0) then //Player has ordered some of this
+//    begin
+//      Ware := gRes.Houses[fType].ResOutput[I];
+//
+//      if (CheckResOut(Ware) < MAX_WARES_IN_HOUSE) //Output of this is not full
+//      //Check we have enough wares to produce this weapon. If both are the same type check > 1 not > 0
+//      and ((WarfareCosts[Ware,1] <> WarfareCosts[Ware,2]) or (CheckResIn(WarfareCosts[Ware,1]) > 1))
+//      and ((WarfareCosts[Ware,1] = wtNone) or (CheckResIn(WarfareCosts[Ware,1]) > 0))
+//      and ((WarfareCosts[Ware,2] = wtNone) or (CheckResIn(WarfareCosts[Ware,2]) > 0))
+//      and (LeftRatio[I] - fResOrderDesired[I] > BestBid) then
+//      begin
+//        Result := I;
+//        BestBid := LeftRatio[Result] - fResOrderDesired[Result];
+//      end;
+//    end;
+//  end;
 
   if Result <> 0 then
   begin
@@ -1488,10 +1505,24 @@ begin
 end;
 
 
+procedure TKMHouse.DecResourceDelivery(aWare: TKMWareType);
+var
+  I: Integer;
+begin
+  for I := 1 to 4 do
+    if aWare = gRes.Houses[fType].ResInput[I] then
+    begin
+      ResDeliveryCnt[I] := ResDeliveryCnt[I] - 1;
+      Exit;
+    end;
+end;
+
+
 //Maybe it's better to rule out In/Out? No, it is required to separate what can be taken out of the house and what not.
 //But.. if we add "Evacuate" button to all house the separation becomes artificial..
 procedure TKMHouse.ResAddToIn(aWare: TKMWareType; aCount: Integer = 1; aFromScript: Boolean = False);
-var I,OrdersRemoved: Integer;
+var
+  I,OrdersRemoved: Integer;
 begin
   Assert(aWare <> wtNone);
 
@@ -1500,13 +1531,14 @@ begin
     begin
       //Don't allow the script to overfill houses
       if aFromScript then
-        aCount := Min(aCount, GetMaxInRes - fResourceIn[I]);
+        aCount := EnsureRange(aCount, 0, GetMaxInRes - fResourceIn[I]);
+      //ResDeliveryCnt stay same, because corresponding demand will be closed
       ResIn[I] := ResIn[I] + aCount;
       if aFromScript then
       begin
-        Inc(fResourceDeliveryCount[I], aCount);
+        ResDeliveryCnt[I] := ResDeliveryCnt[I] + aCount;
         OrdersRemoved := gHands[fOwner].Deliveries.Queue.TryRemoveDemand(Self, aWare, aCount);
-        Dec(fResourceDeliveryCount[I], OrdersRemoved);
+        ResDeliveryCnt[I] := ResDeliveryCnt[I] - OrdersRemoved;
       end;
     end;
 end;
@@ -1683,21 +1715,21 @@ begin
     if aFromScript then
     begin
       //Script might try to take too many
-      aCount := Min(aCount, ResIn[I]);
+      aCount := EnsureRange(aCount, 0, ResIn[I]);
       gHands[Owner].Stats.WareConsumed(aWare, aCount);
     end;
 
     //Keep track of how many are ordered
-    fResourceDeliveryCount[I] := Max(fResourceDeliveryCount[I] - aCount, 0);
+    ResDeliveryCnt[I] := ResDeliveryCnt[I] - aCount;
 
     Assert(ResIn[I] >= aCount, 'fResourceIn[i] < 0');
     ResIn[I] := ResIn[I] - aCount;
     //Only request a new resource if it is allowed by the distribution of wares for our parent player
     for K := 1 to aCount do
-      if fResourceDeliveryCount[I] < GetResDistribution(I) then
+      if ResDeliveryCnt[I] < GetResDistribution(I) then
       begin
         gHands[fOwner].Deliveries.Queue.AddDemand(Self, nil, aWare, 1, dtOnce, diNorm);
-        Inc(fResourceDeliveryCount[I]);
+        ResDeliveryCnt[I] := ResDeliveryCnt[I] + 1;
       end;
     Exit;
   end;
@@ -1752,16 +1784,16 @@ begin
     end;
 
     //Keep track of how many are ordered
-    fResourceDeliveryCount[I] := Max(fResourceDeliveryCount[I] - aCount, 0);
+    ResDeliveryCnt[I] := ResDeliveryCnt[I] - aCount;
 
     Assert(ResIn[I] >= aCount, 'fResourceIn[i] < 0');
     ResIn[I] := ResIn[I] - aCount;
     //Only request a new resource if it is allowed by the distribution of wares for our parent player
     for K := 1 to aCount do
-      if fResourceDeliveryCount[I] < GetResDistribution(I) then
+      if ResDeliveryCnt[I] < GetResDistribution(I) then
       begin
         gHands[fOwner].Deliveries.Queue.AddDemand(Self, nil, aWare, 1, dtOnce, diNorm);
-        Inc(fResourceDeliveryCount[I]);
+        ResDeliveryCnt[I] := ResDeliveryCnt[I] + 1;
       end;
     Exit;
   end;
@@ -1869,7 +1901,7 @@ begin
   for I:=1 to 4 do SaveStream.Write(fResourceDeliveryCount[I]);
   for I:=1 to 4 do SaveStream.Write(fResourceOut[I]);
   for I:=1 to 4 do SaveStream.Write(fResourceOrder[I], SizeOf(fResourceOrder[I]));
-  for I:=1 to 4 do SaveStream.Write(fResOrderDesired[I], SizeOf(fResOrderDesired[I]));
+//  for I:=1 to 4 do SaveStream.Write(fResOrderDesired[I], SizeOf(fResOrderDesired[I]));
 
   if fType in HOUSE_WORKSHOP then
     SaveStream.Write(fResourceOutPool, 20);
@@ -1880,7 +1912,6 @@ begin
   SaveStream.Write(fIsOnSnow);
   SaveStream.Write(fSnowStep);
   SaveStream.Write(fIsDestroyed);
-  SaveStream.Write(RemoveRoadWhenDemolish);
   SaveStream.Write(fPointerCount);
   SaveStream.Write(fTimeSinceUnoccupiedReminder);
   SaveStream.Write(fDisableUnoccupiedMessage);
@@ -1947,28 +1978,29 @@ procedure TKMHouse.UpdateResRequest;
 var
   I: Byte;
   Count, Excess: ShortInt;
+  ResDistribution: Byte;
 begin
   for I := 1 to 4 do
     if not (fType = htTownHall) and not (gRes.Houses[fType].ResInput[I] in [wtAll, wtWarfare, wtNone]) then
     begin
+      ResDistribution := GetResDistribution(I);
       //Not enough resources ordered, add new demand
-      if fResourceDeliveryCount[I] < GetResDistribution(I) then
+      if ResDeliveryCnt[I] < ResDistribution then
       begin
-        Count := GetResDistribution(I)-fResourceDeliveryCount[I];
+        Count := ResDistribution - ResDeliveryCnt[I];
         gHands[fOwner].Deliveries.Queue.AddDemand(
           Self, nil, gRes.Houses[fType].ResInput[I], Count, dtOnce, diNorm);
 
-        Inc(fResourceDeliveryCount[I], Count);
+        ResDeliveryCnt[I] := ResDeliveryCnt[I] + Count;
       end;
 
       //Too many resources ordered, attempt to remove demand if nobody has taken it yet
-      if fResourceDeliveryCount[I] > GetResDistribution(I) then
+      if ResDeliveryCnt[I] > ResDistribution then
       begin
-        Excess := fResourceDeliveryCount[I]-GetResDistribution(I);
-        Count := gHands[fOwner].Deliveries.Queue.TryRemoveDemand(
-                   Self, gRes.Houses[fType].ResInput[I], Excess);
+        Excess := ResDeliveryCnt[I] - ResDistribution;
+        Count := gHands[fOwner].Deliveries.Queue.TryRemoveDemand(Self, gRes.Houses[fType].ResInput[I], Excess);
 
-        Dec(fResourceDeliveryCount[I], Count); //Only reduce it by the number that were actually removed
+        ResDeliveryCnt[I] := ResDeliveryCnt[I] - Count; //Only reduce it by the number that were actually removed
       end;
 
     end;
@@ -1977,15 +2009,28 @@ end;
 
 function TKMHouse.ObjToString: String;
 var
-  ActStr: String;
+  I: Integer;
+  ActStr,ResOutPoolStr: String;
 begin
   ActStr := 'nil';
   if CurrentAction <> nil then
     ActStr := CurrentAction.ClassName;
 
+  ResOutPoolStr := '';
+  for I := Low(fResourceOutPool) to High(fResourceOutPool) do
+  begin
+    if ResOutPoolStr <> '' then
+      ResOutPoolStr := ResOutPoolStr + ',';
+    if I = 10 then
+      ResOutPoolStr := ResOutPoolStr + '|';
+    ResOutPoolStr := ResOutPoolStr + IntToStr(fResourceOutPool[I]);
+  end;
+
+
   Result := ObjToStringShort +
             Format('|HasOwner = %s|Owner = %d|Action = %s|Repair = %s|IsClosedForWorker = %s|DeliveryMode = %s|NewDeliveryMode = %s|Damage = %d|' +
-                   'BuildState = %s|BuildSupplyWood = %d|BuildSupplyStone = %d|BuildingProgress = %d|DoorwayUse = %d',
+                   'BuildState = %s|BuildSupplyWood = %d|BuildSupplyStone = %d|BuildingProgress = %d|DoorwayUse = %d|' +
+                   'ResIn = %d,%d,%d,%d|ResDeliveryCnt = %d,%d,%d,%d|ResOut = %d,%d,%d,%d|ResOrder = %d,%d,%d,%d|ResOutPool = %s',
                    [BoolToStr(fHasOwner, True),
                     fOwner,
                     ActStr,
@@ -1998,7 +2043,12 @@ begin
                     fBuildSupplyWood,
                     fBuildSupplyStone,
                     fBuildingProgress,
-                    DoorwayUse]);
+                    DoorwayUse,
+                    fResourceIn[1],fResourceIn[2],fResourceIn[3],fResourceIn[4],
+                    fResourceDeliveryCount[1],fResourceDeliveryCount[2],fResourceDeliveryCount[3],fResourceDeliveryCount[4],
+                    fResourceOut[1],fResourceOut[2],fResourceOut[3],fResourceOut[4],
+                    fResourceOrder[1],fResourceOrder[2],fResourceOrder[3],fResourceOrder[4],
+                    ResOutPoolStr]);
 end;
 
 

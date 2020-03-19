@@ -134,7 +134,7 @@ type
   function KMGetVertex(const Dir: TKMDirection): TKMPointF;
   function KMGetPointInDir(const aPoint: TKMPoint; const aDir: TKMDirection; aDist: Byte = 1): TKMPoint;
 
-  function KMAddDirection(const aDir: TKMDirection; aAdd: Byte): TKMDirection;
+  function KMAddDirection(const aDir: TKMDirection; aAdd: Integer): TKMDirection;
   function KMNextDirection(const aDir: TKMDirection): TKMDirection;
   function KMPrevDirection(const aDir: TKMDirection): TKMDirection;
 
@@ -776,10 +776,10 @@ begin
 end;
 
 
-function KMAddDirection(const aDir: TKMDirection; aAdd: Byte): TKMDirection;
+function KMAddDirection(const aDir: TKMDirection; aAdd: Integer): TKMDirection;
 begin
   Assert(aDir <> dirNA);
-  Result := TKMDirection((Byte(aDir) + aAdd - 1) mod 8 + 1);
+  Result := TKMDirection((Byte(aDir) + aAdd - 1 + 8) mod 8 + 1);
 end;
 
 
@@ -948,6 +948,12 @@ begin
   ABx := B.x - A.x;     ABy := B.y - A.y;
   CDx := D.x - C.x;     CDy := D.y - C.y;
 
+  //todo -cPractical: Cover with tests and rewrite to avoid / 0. In Delphi Rio behaviour will change
+  // As said by Rey:
+  //if S = -NaN and T = -NaN, then
+  //Result := (S >= 0) and (S <= 1) and (T >= 0) and (T <= 1);
+  // Delphi Berlin - False
+  // Delphi Rio - True
   D2 := -CDx * ABy + ABx * CDy;
 
   S := (-ABy * (A.x - C.x) + ABx * (A.y - C.y)) / D2;

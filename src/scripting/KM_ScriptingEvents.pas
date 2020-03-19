@@ -302,7 +302,7 @@ end;
 procedure TKMScriptEvents.AddConsoleCommand(const aCmdName, aProcName: AnsiString);
 begin
   Assert((Trim(aCmdName) <> '') and (Trim(aProcName) <> ''),
-         Format('Console command name and procedure name should be specidied: [CmdName = %s] [ProcName = [', [aCmdName, aProcName]));
+         Format('Console command name and procedure name should be specified: [CmdName = %s] [ProcName = [', [aCmdName, aProcName]));
 
 
   if fConsoleCommands.ContainsKey(AnsiString(LowerCase(aCmdName))) then
@@ -364,7 +364,7 @@ begin
     //Commands destruction will be handled by fConsoleCommands Tictionary in TKMScriptEvents.Destry
     Command := TKMConsoleCommand.Create;
     Command.Load(LoadStream);
-    fConsoleCommands.Add(Command.Name, Command);
+    fConsoleCommands.Add(AnsiString(LowerCase(Command.Name)), Command);
   end;
 end;
 
