@@ -74,6 +74,7 @@ type
     procedure LoadFromFile(const aFileName: UnicodeString);
     procedure SaveToFile(const aFileName: UnicodeString);
 
+    property Path: UnicodeString read fPath;
     property BackGroundPic: TKMPic read fBackGroundPic write fBackGroundPic;
     property MapCount: Byte read fMapCount write SetMapCount;
     property CampaignId: TKMCampaignId read fCampaignId write SetCampaignId;
@@ -411,6 +412,7 @@ var
 begin
   if not FileExists(aFileName) then Exit;
 
+  fPath := ExtractFilePath(aFileName);
   M := TKMemoryStreamBinary.Create;
   M.LoadFromFile(aFileName);
 
@@ -447,6 +449,7 @@ var
 begin
   Assert(aFileName <> '');
 
+  fPath := ExtractFilePath(aFileName);
   M := TKMemoryStreamBinary.Create;
   SetLength(cmp, 3);
   cmp[0] := fCampaignId[0];
