@@ -31,6 +31,7 @@ type
     function EnsureRangeS(aValue, aMin, aMax: Single): Single;
 
     function Format(const aFormatting: string; aData: array of const): string;
+    function FormatFloat(const aFormat: string; aValue: Single): string;
 
     function IfThen(aBool: Boolean; const aTrue, aFalse: AnsiString): AnsiString;
     function IfThenI(aBool: Boolean; aTrue, aFalse: Integer): Integer;
@@ -57,6 +58,8 @@ type
     function MinInArrayS(aArray: array of Single): Single;
 
     function Power(aBase, aExp: Extended): Extended;
+
+    function RandomRangeI(aFrom, aTo: Integer): Integer;
 
     function RGBDecToBGRHex(aR, aG, aB: Byte): AnsiString;
     function RGBToBGRHex(aHexColor: string): AnsiString;
@@ -411,6 +414,20 @@ begin
 end;
 
 
+//* Version: 11000
+//* Wrapper for pascal FormatFloat function
+//* Formats aValue with specified aFormat
+function TKMScriptUtils.FormatFloat(const aFormat: string; aValue: Single): string;
+begin
+  try
+    Result := SysUtils.FormatFloat(aFormat, aValue);
+  except
+    gScriptEvents.ExceptionOutsideScript := True;
+    raise;
+  end;
+end;
+
+
 //* Version: 7000+
 //* Checks condition aBool and returns aTrue/aFalse string depending on check result
 function TKMScriptUtils.IfThen(aBool: Boolean; const aTrue, aFalse: AnsiString): AnsiString;
@@ -672,6 +689,19 @@ begin
 end;
 
 
+//* Version: 11000
+//* Generates a random number in requested range aFrom..aTo
+function TKMScriptUtils.RandomRangeI(aFrom, aTo: Integer): Integer;
+begin
+  try
+    Result := Math.RandomRange(aFrom, aTo);
+  except
+    gScriptEvents.ExceptionOutsideScript := True;
+    raise;
+  end;
+end;
+
+
 //* Version: 10940
 //* Converts RGB to HEX BGR color
 //* Result: HEX BGR Color
@@ -681,7 +711,7 @@ end;
 function TKMScriptUtils.RGBDecToBGRHex(aR, aG, aB: Byte): AnsiString;
 begin
   try
-    Result := AnsiString(Format('%.6x', [RGB2BGR(StrToInt('$' + IntToHex(aR) + IntToHex(aG) + IntToHex(aB)))]));
+    Result := AnsiString(Format('%.6x', [RGB2BGR(StrToInt('$' + IntToHex(aR, 2) + IntToHex(aG, 2) + IntToHex(aB, 2)))]));
   except
     gScriptEvents.ExceptionOutsideScript := True;
     raise;

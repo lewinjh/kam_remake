@@ -99,14 +99,14 @@ end;
 
 procedure TKMRenderQuery.QueriesBegin(aQueryId: Integer);
 begin
-//  glBeginQuery(GL_TIME_ELAPSED, aQueryId); //fQueryID[aQueryId, fQueryBufferA]);//fQueryID[fQueryBufferBack][0]);
+  //glBeginQuery(GL_TIME_ELAPSED, fQueryID[fQueryBufferBack][0]);
   glQueryCounter(fQueryID[aQueryId, fQueryBufferA].TimeStart, GL_TIMESTAMP);
 end;
 
 
 procedure TKMRenderQuery.QueriesEnd(aQueryId: Integer);
 begin
-//  glEndQuery(GL_TIME_ELAPSED);
+  //glEndQuery(GL_TIME_ELAPSED);
   glQueryCounter(fQueryID[aQueryId, fQueryBufferA].TimeEnd, GL_TIMESTAMP);
 end;
 

@@ -395,6 +395,18 @@ begin
     Sender.AddTypeS('TKMMissionDifficulty', '(mdNone,mdEasy3,mdEasy2,mdEasy1,mdNormal,mdHard1,mdHard2,mdHard3)');
     Sender.AddTypeS('TKMMissionDifficultySet', 'set of TKMMissionDifficulty');
 
+    Sender.AddTypeS('TKMTileOverlay', '(toNone, toDig1, toDig2, toDig3, toDig4, toRoad)');
+
+    Sender.AddTypeS('TKMTerrainKind', '('
+      + 'tkCustom,       tkGrass,        tkMoss,         tkPaleGrass, tkCoastSand,'
+      + 'tkGrassSand1,   tkGrassSand2,   tkGrassSand3,   tkSand,      tkGrassDirt,'
+      + 'tkDirt,         tkCobbleStone,  tkGrassyWater,  tkSwamp,     tkIce,'
+      + 'tkSnowOnGrass,  tkSnowOnDirt,   tkSnow,         tkDeepSnow,  tkStone,'
+      + 'tkGoldMount,    tkIronMount,    tkAbyss,        tkGravel,    tkCoal,'
+      + 'tkGold,         tkIron,         tkWater,        tkFastWater, tkLava)');
+
+    Sender.AddTypeS('TKMTileMaskKind', '(mkNone, mkSoft1, mkSoft2, mkSoft3, mkStraight)');
+
     // Register classes and methods to the script engine.
     // After that they can be used from within the script.
     c := Sender.AddClassN(nil, AnsiString(fStates.ClassName));
@@ -425,6 +437,8 @@ begin
 
     RegisterMethodCheck(c, 'function FogRevealed(aPlayer: Byte; aX, aY: Word): Boolean');
 
+    RegisterMethodCheck(c, 'function GameSpeed: Single');
+    RegisterMethodCheck(c, 'function GameSpeedChangeAllowed: Boolean');
     RegisterMethodCheck(c, 'function GameTime: Cardinal');
 
     RegisterMethodCheck(c, 'function GroupAssignedToDefencePosition(aGroupID, X, Y: Integer): Boolean');
@@ -496,8 +510,22 @@ begin
     RegisterMethodCheck(c, 'function LocationCount: Integer');
 
     RegisterMethodCheck(c, 'function MapHeight: Integer');
+    RegisterMethodCheck(c, 'function MapTileHasOnlyTerrainKind(X, Y: Integer; TerKind: TKMTerrainKind): Boolean');
+    RegisterMethodCheck(c, 'function MapTileHasOnlyTerrainKinds(X, Y: Integer; TerKinds: array of TKMTerrainKind): Boolean');
+    RegisterMethodCheck(c, 'function MapTileHasTerrainKind(X, Y: Integer; TerKind: TKMTerrainKind): Boolean');
     RegisterMethodCheck(c, 'function MapTileHeight(X, Y: Integer): Integer');
+    RegisterMethodCheck(c, 'function MapTileIsCoal(X, Y: Integer): Word');
+    RegisterMethodCheck(c, 'function MapTileIsGold(X, Y: Integer): Word');
+    RegisterMethodCheck(c, 'function MapTileIsIce(X, Y: Integer): Boolean');
+    RegisterMethodCheck(c, 'function MapTileIsIron(X, Y: Integer): Word');
+    RegisterMethodCheck(c, 'function MapTileIsSand(X, Y: Integer): Boolean');
+    RegisterMethodCheck(c, 'function MapTileIsSnow(X, Y: Integer): Boolean');
+    RegisterMethodCheck(c, 'function MapTileIsSoil(X, Y: Integer): Boolean');
+    RegisterMethodCheck(c, 'function MapTileIsStone(X, Y: Integer): Word');
+    RegisterMethodCheck(c, 'function MapTileIsWater(X, Y: Integer; FullTilesOnle: Boolean): Boolean');
     RegisterMethodCheck(c, 'function MapTileObject(X, Y: Integer): Integer');
+    RegisterMethodCheck(c, 'function MapTileOverlay(X, Y: Integer): TKMTileOverlay');
+    RegisterMethodCheck(c, 'function MapTileOwner(X, Y: Integer): Integer');
     RegisterMethodCheck(c, 'function MapTilePassability(X, Y: Integer; aPassability: Byte): Boolean');
     RegisterMethodCheck(c, 'function MapTileRotation(X, Y: Integer): Integer');
     RegisterMethodCheck(c, 'function MapTileType(X, Y: Integer): Integer');
@@ -610,6 +638,9 @@ begin
     RegisterMethodCheck(c, 'procedure FogRevealCircle(aPlayer, X, Y, aRadius: Word)');
     RegisterMethodCheck(c, 'procedure FogRevealRect(aPlayer, X1, Y1, X2, Y2: Word)');
 
+    RegisterMethodCheck(c, 'procedure GameSpeed(aSpeed: Single)');
+    RegisterMethodCheck(c, 'procedure GameSpeedChangeAllowed(aAllowed: Boolean)');
+
     RegisterMethodCheck(c, 'function  GiveAnimal(aType, X,Y: Word): Integer');
     RegisterMethodCheck(c, 'function  GiveField(aPlayer, X, Y: Word): Boolean');
     RegisterMethodCheck(c, 'function  GiveFieldAged(aPlayer, X, Y: Word; aStage: Byte; aRandomAge: Boolean): Boolean');
@@ -669,14 +700,26 @@ begin
 
     RegisterMethodCheck(c, 'function MapTileHeightSet(X, Y, Height: Integer): Boolean');
     RegisterMethodCheck(c, 'function MapTileObjectSet(X, Y, Obj: Integer): Boolean');
+    RegisterMethodCheck(c, 'function MapTileOverlaySet(X, Y: Integer; aOverlay: TKMTileOverlay; aOverwrite: Boolean): Boolean');
     RegisterMethodCheck(c, 'function MapTileSet(X, Y, aType, aRotation: Integer): Boolean');
     RegisterMethodCheck(c, 'function MapTilesArraySet(aTiles: array of TKMTerrainTileBrief; aRevertOnFail, aShowDetailedErrors: Boolean): Boolean');
     RegisterMethodCheck(c, 'function MapTilesArraySetS(aTiles: TAnsiStringArray; aRevertOnFail, aShowDetailedErrors: Boolean): Boolean');
+
+    RegisterMethodCheck(c, 'procedure MapBrush(X, Y: Integer; aSize: Integer; aSquare: Boolean; aTerKind: TKMTerrainKind; aRandomTiles, aOverrideCustomTiles: Boolean)');
+    RegisterMethodCheck(c, 'procedure MapBrushElevation(X, Y: Integer; aSquare, aRaise: Boolean; aSize, aSlope, aSpeed: Integer)');
+    RegisterMethodCheck(c, 'procedure MapBrushEqualize(X, Y: Integer; aSquare: Boolean; aSize, aSlope, aSpeed: Integer)');
+    RegisterMethodCheck(c, 'procedure MapBrushFlatten(X, Y: Integer; aSquare: Boolean; aSize, aSlope, aSpeed: Integer)');
+    RegisterMethodCheck(c, 'procedure MapBrushMagicWater(X, Y: Integer)');
+    RegisterMethodCheck(c, 'procedure MapBrushWithMask(X, Y: Integer; aSize: Integer; aSquare: Boolean; aTerKind: TKMTerrainKind;'
+                                      + 'aRandomTiles, aOverrideCustomTiles: Boolean;'
+                                      + 'aBrushMask: TKMTileMaskKind; aBlendingLvl: Integer; aUseMagicBrush: Boolean)');
 
     RegisterMethodCheck(c, 'procedure OverlayTextAppend(aPlayer: Shortint; const aText: AnsiString)');
     RegisterMethodCheck(c, 'procedure OverlayTextAppendFormatted(aPlayer: Shortint; const aText: AnsiString; Params: array of const)');
     RegisterMethodCheck(c, 'procedure OverlayTextSet(aPlayer: Shortint; const aText: AnsiString)');
     RegisterMethodCheck(c, 'procedure OverlayTextSetFormatted(aPlayer: Shortint; const aText: AnsiString; Params: array of const)');
+
+    RegisterMethodCheck(c, 'procedure Peacetime(aPeacetime: Cardinal)');
 
     RegisterMethodCheck(c, 'function  PlanAddField(aPlayer, X, Y: Word): Boolean');
     RegisterMethodCheck(c, 'function  PlanAddHouse(aPlayer, aHouseType, X, Y: Word): Boolean');
@@ -689,6 +732,7 @@ begin
     RegisterMethodCheck(c, 'procedure PlayerAllianceChange(aPlayer1, aPlayer2: Byte; aCompliment, aAllied: Boolean)');
     RegisterMethodCheck(c, 'procedure PlayerAllianceNFogChange(aPlayer1, aPlayer2: Byte; aCompliment, aAllied, aSyncAllyFog: Boolean)');
     RegisterMethodCheck(c, 'procedure PlayerDefeat(aPlayer: Word)');
+    RegisterMethodCheck(c, 'procedure PlayerGoalsRemoveAll(aPlayer: Word; aForAllPlayers: Boolean)');
     RegisterMethodCheck(c, 'procedure PlayerShareBeacons(aPlayer1, aPlayer2: Word; aCompliment, aShare: Boolean)');
     RegisterMethodCheck(c, 'procedure PlayerShareFog(aPlayer1, aPlayer2: Word; aShare: Boolean)');
     RegisterMethodCheck(c, 'procedure PlayerShareFogCompliment(aPlayer1, aPlayer2: Word; aShare: Boolean)');
@@ -758,7 +802,8 @@ begin
     RegisterMethodCheck(c, 'function EnsureRangeS(aValue, aMin, aMax: Single): Single');
     RegisterMethodCheck(c, 'function EnsureRangeI(aValue, aMin, aMax: Integer): Integer');
 
-    RegisterMethodCheck(c, 'function Format(aFormatting: string; aData: array of const): string;');
+    RegisterMethodCheck(c, 'function Format(aFormatting: string; aData: array of const): string');
+    RegisterMethodCheck(c, 'function FormatFloat(const aFormat: string; aValue: Single): string');
 
     RegisterMethodCheck(c, 'function IfThen(aBool: Boolean; const aTrue, aFalse: AnsiString): AnsiString');
     RegisterMethodCheck(c, 'function IfThenI(aBool: Boolean; aTrue, aFalse: Integer): Integer');
@@ -785,6 +830,8 @@ begin
     RegisterMethodCheck(c, 'function MinInArrayS(aArray: array of Single): Single');
 
     RegisterMethodCheck(c, 'function Power(Base, Exponent: Extended): Extended');
+
+    RegisterMethodCheck(c, 'function RandomRangeI(aFrom, aTo: Integer): Integer');
 
     RegisterMethodCheck(c, 'function RGBDecToBGRHex(aR, aG, aB: Byte): AnsiString');
     RegisterMethodCheck(c, 'function RGBToBGRHex(aHexColor: string): AnsiString');
@@ -1024,6 +1071,8 @@ begin
 
       RegisterMethod(@TKMScriptStates.FogRevealed,                              'FogRevealed');
 
+      RegisterMethod(@TKMScriptStates.GameSpeed,                                'GameSpeed');
+      RegisterMethod(@TKMScriptStates.GameSpeedChangeAllowed,                   'GameSpeedChangeAllowed');
       RegisterMethod(@TKMScriptStates.GameTime,                                 'GameTime');
 
       RegisterMethod(@TKMScriptStates.GroupAssignedToDefencePosition,           'GroupAssignedToDefencePosition');
@@ -1095,8 +1144,22 @@ begin
       RegisterMethod(@TKMScriptStates.LocationCount,                            'LocationCount');
 
       RegisterMethod(@TKMScriptStates.MapHeight,                                'MapHeight');
+      RegisterMethod(@TKMScriptStates.MapTileHasOnlyTerrainKind,                'MapTileHasOnlyTerrainKind');
+      RegisterMethod(@TKMScriptStates.MapTileHasOnlyTerrainKinds,               'MapTileHasOnlyTerrainKinds');
+      RegisterMethod(@TKMScriptStates.MapTileHasTerrainKind,                    'MapTileHasTerrainKind');
       RegisterMethod(@TKMScriptStates.MapTileHeight,                            'MapTileHeight');
+      RegisterMethod(@TKMScriptStates.MapTileIsCoal,                            'MapTileIsCoal');
+      RegisterMethod(@TKMScriptStates.MapTileIsGold,                            'MapTileIsGold');
+      RegisterMethod(@TKMScriptStates.MapTileIsIce,                             'MapTileIsIce');
+      RegisterMethod(@TKMScriptStates.MapTileIsIron,                            'MapTileIsIron');
+      RegisterMethod(@TKMScriptStates.MapTileIsSand,                            'MapTileIsSand');
+      RegisterMethod(@TKMScriptStates.MapTileIsSnow,                            'MapTileIsSnow');
+      RegisterMethod(@TKMScriptStates.MapTileIsSoil,                            'MapTileIsSoil');
+      RegisterMethod(@TKMScriptStates.MapTileIsStone,                           'MapTileIsStone');
+      RegisterMethod(@TKMScriptStates.MapTileIsWater,                           'MapTileIsWater');
       RegisterMethod(@TKMScriptStates.MapTileObject,                            'MapTileObject');
+      RegisterMethod(@TKMScriptStates.MapTileOverlay,                           'MapTileOverlay');
+      RegisterMethod(@TKMScriptStates.MapTileOwner,                             'MapTileOwner');
       RegisterMethod(@TKMScriptStates.MapTilePassability,                       'MapTilePassability');
       RegisterMethod(@TKMScriptStates.MapTileRotation,                          'MapTileRotation');
       RegisterMethod(@TKMScriptStates.MapTileType,                              'MapTileType');
@@ -1209,6 +1272,9 @@ begin
       RegisterMethod(@TKMScriptActions.FogRevealCircle,                         'FogRevealCircle');
       RegisterMethod(@TKMScriptActions.FogRevealRect,                           'FogRevealRect');
 
+      RegisterMethod(@TKMScriptActions.GameSpeed,                               'GameSpeed');
+      RegisterMethod(@TKMScriptActions.GameSpeedChangeAllowed,                  'GameSpeedChangeAllowed');
+
       RegisterMethod(@TKMScriptActions.GiveAnimal,                              'GiveAnimal');
       RegisterMethod(@TKMScriptActions.GiveField,                               'GiveField');
       RegisterMethod(@TKMScriptActions.GiveFieldAged,                           'GiveFieldAged');
@@ -1264,18 +1330,28 @@ begin
 
       RegisterMethod(@TKMScriptActions.Log,                                     'Log');
 
-      RegisterMethod(@TKMScriptActions.MarketSetTrade,                          'MarketSetTrade');
+      RegisterMethod(@TKMScriptActions.MapBrush,                                'MapBrush');
+      RegisterMethod(@TKMScriptActions.MapBrushElevation,                       'MapBrushElevation');
+      RegisterMethod(@TKMScriptActions.MapBrushEqualize,                        'MapBrushEqualize');
+      RegisterMethod(@TKMScriptActions.MapBrushFlatten,                         'MapBrushFlatten');
+      RegisterMethod(@TKMScriptActions.MapBrushMagicWater,                      'MapBrushMagicWater');
+      RegisterMethod(@TKMScriptActions.MapBrushWithMask,                        'MapBrushWithMask');
 
       RegisterMethod(@TKMScriptActions.MapTileSet,                              'MapTileSet');
       RegisterMethod(@TKMScriptActions.MapTilesArraySet,                        'MapTilesArraySet');
       RegisterMethod(@TKMScriptActions.MapTilesArraySetS,                       'MapTilesArraySetS');
       RegisterMethod(@TKMScriptActions.MapTileHeightSet,                        'MapTileHeightSet');
       RegisterMethod(@TKMScriptActions.MapTileObjectSet,                        'MapTileObjectSet');
+      RegisterMethod(@TKMScriptActions.MapTileOverlaySet,                       'MapTileOverlaySet');
+
+      RegisterMethod(@TKMScriptActions.MarketSetTrade,                          'MarketSetTrade');
 
       RegisterMethod(@TKMScriptActions.OverlayTextAppend,                       'OverlayTextAppend');
       RegisterMethod(@TKMScriptActions.OverlayTextAppendFormatted,              'OverlayTextAppendFormatted');
       RegisterMethod(@TKMScriptActions.OverlayTextSet,                          'OverlayTextSet');
       RegisterMethod(@TKMScriptActions.OverlayTextSetFormatted,                 'OverlayTextSetFormatted');
+
+      RegisterMethod(@TKMScriptActions.Peacetime,                               'Peacetime');
 
       RegisterMethod(@TKMScriptActions.PlanAddField,                            'PlanAddField');
       RegisterMethod(@TKMScriptActions.PlanAddHouse,                            'PlanAddHouse');
@@ -1288,6 +1364,7 @@ begin
       RegisterMethod(@TKMScriptActions.PlayerAllianceNFogChange,                'PlayerAllianceNFogChange');
       RegisterMethod(@TKMScriptActions.PlayerAddDefaultGoals,                   'PlayerAddDefaultGoals');
       RegisterMethod(@TKMScriptActions.PlayerDefeat,                            'PlayerDefeat');
+      RegisterMethod(@TKMScriptActions.PlayerGoalsRemoveAll,                    'PlayerGoalsRemoveAll');
       RegisterMethod(@TKMScriptActions.PlayerShareBeacons,                      'PlayerShareBeacons');
       RegisterMethod(@TKMScriptActions.PlayerShareFog,                          'PlayerShareFog');
       RegisterMethod(@TKMScriptActions.PlayerShareFogCompliment,                'PlayerShareFogCompliment');
@@ -1359,6 +1436,7 @@ begin
       RegisterMethod(@TKMScriptUtils.EnsureRangeS,                              'EnsureRangeS');
 
       RegisterMethod(@TKMScriptUtils.Format,                                    'Format');
+      RegisterMethod(@TKMScriptUtils.FormatFloat,                               'FormatFloat');
 
       RegisterMethod(@TKMScriptUtils.IfThen,                                    'IfThen');
       RegisterMethod(@TKMScriptUtils.IfThenI,                                   'IfThenI');
@@ -1385,6 +1463,8 @@ begin
       RegisterMethod(@TKMScriptUtils.MinInArrayS,                               'MinInArrayS');
 
       RegisterMethod(@TKMScriptUtils.Power,                                     'Power');
+
+      RegisterMethod(@TKMScriptUtils.RandomRangeI,                              'RandomRangeI');
 
       RegisterMethod(@TKMScriptUtils.RGBDecToBGRHex,                            'RGBDecToBGRHex');
       RegisterMethod(@TKMScriptUtils.RGBToBGRHex,                               'RGBToBGRHex');

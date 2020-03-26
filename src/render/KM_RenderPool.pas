@@ -363,6 +363,9 @@ begin
   if SHOW_TERRAIN_KINDS then
     gRenderAux.TileTerrainKinds(aRect);
 
+  if SHOW_TERRAIN_OVERLAYS then
+    gRenderAux.TileTerrainOverlays(aRect);
+
   if SHOW_JAM_METER then
     gRenderAux.TileTerrainJamMeter(aRect);
 
@@ -1382,7 +1385,7 @@ begin
 
   for I := 0 to fMarksList.Count - 1 do
   if fMarksList.Tag[I] = TC_OUTLINE then
-    RenderWireTile(fMarksList[I], $FFFFFF00) // Cyan rect
+    RenderWireTile(fMarksList[I], icCyan) // Cyan rect
   else
     RenderSpriteOnTile(fMarksList[I], fMarksList.Tag[I]); // Icon
 end;
@@ -1468,7 +1471,7 @@ begin
   P := gGameCursor.Cell;
   Size := gGameCursor.MapEdSize;
   IsSquare := gGameCursor.MapEdShape = hsSquare;
-  if gGameCursor.MapEdMagicBrush then
+  if gGameCursor.MapEdUseMagicBrush then
     IterateOverArea(P, Size, IsSquare, RenderWireTileInt)
   else
   if gGameCursor.Tag1 <> 0 then
@@ -1557,22 +1560,22 @@ begin
                         or gMySpectator.Hand.BuildList.HousePlanList.HasPlan(P)
                         or (gMySpectator.Hand.HousesHitTest(P.X, P.Y) <> nil))
                     then
-                      RenderWireTile(P, $FFFFFF00) // Cyan quad
+                      RenderWireTile(P, icCyan) // Cyan quad
                     else
                       RenderSpriteOnTile(P, TC_BLOCK); // Red X
                   end;
     cmRoad:       if (gMySpectator.Hand.CanAddFakeFieldPlan(P, ftRoad)) and (gGameCursor.Tag1 <> Ord(cfmErase)) then
-                    RenderWireTile(P, $FFFFFF00) // Cyan quad
+                    RenderWireTile(P, icCyan) // Cyan quad
                   else
                     RenderSpriteOnTile(P, TC_BLOCK);       // Red X
     cmField:      if (gMySpectator.Hand.CanAddFakeFieldPlan(P, ftCorn) or (gGame.IsMapEditor and gTerrain.TileIsCornField(P)))
                     and (gGameCursor.Tag1 <> Ord(cfmErase)) then
-                    RenderWireTile(P, $FFFFFF00) // Cyan quad
+                    RenderWireTile(P, icCyan) // Cyan quad
                   else
                     RenderSpriteOnTile(P, TC_BLOCK);       // Red X
     cmWine:       if (gMySpectator.Hand.CanAddFakeFieldPlan(P, ftWine) or (gGame.IsMapEditor and gTerrain.TileIsWineField(P)))
                     and (gGameCursor.Tag1 <> Ord(cfmErase)) then
-                    RenderWireTile(P, $FFFFFF00) // Cyan quad
+                    RenderWireTile(P, icCyan) // Cyan quad
                   else
                     RenderSpriteOnTile(P, TC_BLOCK);       // Red X
     cmHouses:     RenderWireHousePlan(KMPointAdd(P, gGameCursor.DragOffset), TKMHouseType(gGameCursor.Tag1)); // Cyan quads and red Xs
@@ -1581,14 +1584,19 @@ begin
                     RenderTile(gGameCursor.Tag1, P.X, P.Y, gGameCursor.MapEdDir)
                   else
                     RenderTile(gGameCursor.Tag1, P.X, P.Y, (gTerrain.AnimStep div 5) mod 4); // Spin it slowly so player remembers it is on randomized
+    cmOverlays:   begin
+                    RenderWireTile(P, icCyan);
+                    if gGameCursor.Tag1 > 0 then
+                      RenderTile(TILE_OVERLAY_IDS[TKMTileOverlay(gGameCursor.Tag1)], P.X, P.Y, 0);
+                    end;
     cmObjects:    begin
                     // If there's object below - paint it in Red
                     RenderMapElement(gTerrain.Land[P.Y,P.X].Obj, gTerrain.AnimStep, P.X, P.Y, True, True);
                     RenderMapElement(gGameCursor.Tag1, gTerrain.AnimStep, P.X, P.Y, True);
                   end;
     cmMagicWater: ; //TODO: Render some effect to show magic water is selected
-    cmEyeDropper: RenderWireTile(P, $FFFFFF00); // Cyan quad
-    cmRotateTile: RenderWireTile(P, $FFFFFF00); // Cyan quad
+    cmEyeDropper: RenderWireTile(P, icCyan); // Cyan quad
+    cmRotateTile: RenderWireTile(P, icCyan); // Cyan quad
     cmElevate,
     cmEqualize:   RenderForegroundUI_ElevateEqualize;
     cmUnits:      RenderForegroundUI_Units;
@@ -1695,10 +1703,10 @@ begin
   end;
 
   if (aHighlightAll or not IsRendered) and
-    (((gTerrain.Land[P.Y, P.X].TileOverlay = toRoad)
+    (((gTerrain.Land[P.Y, P.X].TileOverlay <> toNone)
         and (gTerrain.Land[P.Y, P.X].TileLock = tlNone)) //Sometimes we can point road tile under the house, do not show Cyan quad then
       or (gTerrain.Land[P.Y, P.X].CornOrWine <> 0)) then
-    RenderWireTile(P, $FFFFFF00); // Cyan quad
+    RenderWireTile(P, icCyan); // Cyan quad
 end;
 
 
@@ -1740,7 +1748,7 @@ begin
         and (gTerrain.Land[P.Y, P.X].TileLock = tlNone)) //Sometimes we can point road tile under the house, do not show Cyan quad then
       or (gTerrain.Land[P.Y, P.X].CornOrWine <> 0))
     and (gTerrain.Land[P.Y, P.X].TileOwner <> gMySpectator.HandID) then //Only if tile has other owner
-    RenderWireTile(P, $FFFFFF00); // Cyan quad
+    RenderWireTile(P, icCyan); // Cyan quad
 end;
 
 
@@ -1902,7 +1910,7 @@ procedure TRenderList.AddSpriteG(aRX: TRXType; aId: Word; aUID: Integer; pX,pY,g
 const
   MAX_SEL_RECT_HEIGHT = CELL_SIZE_PX * 1.5; //Restrict too long images selection rect
 var
-  W, H: Integer;
+  W, H, WS: Integer;
 begin
   if fCount >= Length(RenderList) then
     SetLength(RenderList, fCount + 256); // Book some space
@@ -1919,13 +1927,14 @@ begin
     if aUID > 0 then
     with RenderList[fCount].SelectionRect do
     begin
+      WS := (fUnitsRXData.SizeNoShadow[aId].right div 2) + fUnitsRXData.Pivot[aId].x; //Fix for bow and crossbowman
       //Enlarge rect from image size to the left and right, to be at least CELL_SIZE_PX width and height
-      W := Max(0, CELL_SIZE_PX - (fUnitsRXData.SizeNoShadow[aId].right - fUnitsRXData.SizeNoShadow[aId].left)); //width to add to image pos. half to the left, half to the right
+      W := Max(0, CELL_SIZE_PX - (Abs(WS div 2) + fUnitsRXData.SizeNoShadow[aId].right - fUnitsRXData.SizeNoShadow[aId].left)); //width to add to image pos. half to the left, half to the right
       H := Max(0, CELL_SIZE_PX - (fUnitsRXData.SizeNoShadow[aId].bottom - fUnitsRXData.SizeNoShadow[aId].top)); //height to add to image pos. half to the top, half to the bottom
 
-      Left := RenderList[fCount].Loc.X + (-(W div 2) - 0.5 + fUnitsRXData.SizeNoShadow[aId].left) / CELL_SIZE_PX; //-0.5 to get some insurance on uneven terrain
+      Left := RenderList[fCount].Loc.X + (-(W div 2) - Max(0,WS) + fUnitsRXData.SizeNoShadow[aId].left) / CELL_SIZE_PX;
       Bottom := gY - ((H div 2) + fUnitsRXData.Size[aId].Y - 1 - fUnitsRXData.SizeNoShadow[aId].bottom) / CELL_SIZE_PX;
-      Right := Left + (W + 0.5 + gGFXData[aRX, aId].PxWidth - (fUnitsRXData.Size[aId].X - 1 - fUnitsRXData.SizeNoShadow[aId].right)) / CELL_SIZE_PX; //+0.5 to get some insurance on uneven terrain
+      Right := Left + (W - Min(0, WS) + gGFXData[aRX, aId].PxWidth - (fUnitsRXData.Size[aId].X - 1 - fUnitsRXData.SizeNoShadow[aId].right)) / CELL_SIZE_PX;
       Top := Bottom - Min(MAX_SEL_RECT_HEIGHT, H + gGFXData[aRX, aId].PxHeight - fUnitsRXData.SizeNoShadow[aId].top) / CELL_SIZE_PX;
     end;
 

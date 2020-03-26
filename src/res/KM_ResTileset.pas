@@ -38,7 +38,7 @@ type
 
   TKMTileMaskSubType = (mstMain, mstExtra);
 
-  TKMTileMaskKind = (mkNone, mkSoftest, mkSoft, mkSoft2, mkHard);
+  TKMTileMaskKind = (mkNone, mkSoft1, mkSoft2, mkSoft3, mkStraight);
 
   TKMMaskFullType = record
     Kind: TKMTileMaskKind;
@@ -106,7 +106,7 @@ const
   TILE_MASK_KINDS_PREVIEW: array[TKMTileMaskKind] of Integer =
     (-1, 5551, 5561, 5571, 5581); //+1 here, so -1 is no image, and not grass
 
-  TILE_MASKS_FOR_LAYERS: array[mkSoftest..mkHard] of array[mt_2Straight..mt_4Square] of array[TKMTileMaskSubType] of Integer =
+  TILE_MASKS_FOR_LAYERS: array[mkSoft1..mkStraight] of array[mt_2Straight..mt_4Square] of array[TKMTileMaskSubType] of Integer =
      //Softest
     (((5549, -1),
       (5550, -1),
@@ -470,7 +470,7 @@ type
     procedure ExportPatternDat(const aFilename: string);
 
     function TileIsWater(aTile: Word): Boolean;
-    //function TileHasWater(aTile: Word): Boolean;
+    function TileHasWater(aTile: Word): Boolean;
     function TileIsIce(aTile: Word): Boolean;
     function TileIsSand(aTile: Word): Boolean;
     function TileIsStone(aTile: Word): Word;
@@ -497,9 +497,8 @@ uses
   KM_CommonUtils;
 
 const
-  TILES_NOT_ALLOWED_TO_SET: array[0..17] of Word = (55,59,60,61,62,63, //wine and corn
+  TILES_NOT_ALLOWED_TO_SET: array[0..16] of Word = (55,59,60,61,62,63, //wine and corn
                                                     189,169,185, //duplicates of 108,109,110
-                                                    246, //some strange bridge...
                                                     248,249,250,251,252,253,254,255); //roads and overlays
 
 
@@ -630,11 +629,11 @@ begin
 end;
 
 
-{//Check if requested tile has any water, including ground-water transitions
+//Check if requested tile has any water, including ground-water transitions
 function TKMResTileset.TileHasWater(aTile: Word): Boolean;
 begin
-  Result := aTile in [4,10,12,22,23,44,48,105..107,114..127,142,143,192..194,196,198..200,208..211,230,232..244];
-end;}
+  Result := aTile in [48,105..107,114..127,142,143,192..194,196,198..200,208..211,230,232..244];
+end;
 
 
 {Check if requested tile is sand suitable for crabs}

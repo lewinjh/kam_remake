@@ -23,7 +23,7 @@ const
   MENU_DESIGN_X         = 1024;         //Thats the size menu was designed for. All elements are placed in this size
   MENU_DESIGN_Y         = 768;          //Thats the size menu was designed for. All elements are placed in this size
   MIN_RESOLUTION_WIDTH  = 1024;         //Lowest supported resolution X
-  MIN_RESOLUTION_HEIGHT = 576;          //Lowest supported resolution Y
+  MIN_RESOLUTION_HEIGHT = 720;          //Lowest supported resolution Y
   {$I KM_Revision.inc};
   {$I KM_NetProtocolRevision.inc};
   {$IFDEF USESECUREAUTH}
@@ -133,6 +133,7 @@ var
   SHOW_FPS                :Boolean = False; //Show FPS
   SHOW_TERRAIN_IDS        :Boolean = False; //Show number of every tile terrain on it (also show layers terrain ids)
   SHOW_TERRAIN_KINDS      :Boolean = False; //Show terrain kind ids on every tile corner
+  SHOW_TERRAIN_OVERLAYS   :Boolean = False; //Show terrain tile overlays
   SHOW_TERRAIN_TILES_GRID :Boolean = False; //Show terrain tiles grid
   SHOW_BRUSH_APPLY_AREA   :Boolean = False; //Show brushes apply area
   SHOW_TERRAIN_WIRES      :Boolean = False; //Makes terrain height visible
@@ -228,6 +229,9 @@ const
   MAX_LOBBY_SLOTS      = MAX_LOBBY_PLAYERS + MAX_LOBBY_SPECTATORS;
   MAX_TEAMS            = MAX_LOBBY_PLAYERS div 2;
 
+  GAME_MP_SPEED_MAX = 2.5;
+  GAME_SPEED_NORMAL = 1;
+
   AUTOSAVE_COUNT          = 5;    //How many autosaves to backup - this MUST be variable (Parallel Runner)
   AUTOSAVE_COUNT_MIN      = 2;
   AUTOSAVE_COUNT_MAX      = 10;
@@ -252,6 +256,7 @@ var
 
 const
   TERRAIN_MAX_BLENDING_LEVEL = 100;
+  MAPED_BRUSH_MAX_SIZE = 32;
 
   //Here we store options that are hidden somewhere in code
   //Unit condition
@@ -370,8 +375,8 @@ type
     cmEyedropper, //Terrain eyedropper
     cmPaintBucket, //PaintBucket - change color(team) for map objects
     cmUniversalEraser, //Universal eraser for units/groups/houses/terrain objects/roads and fields (corn/wine)
-    cmRotateTile  //Rotate terrain tile
-    );
+    cmRotateTile,  //Rotate terrain tile
+    cmOverlays);  //Tile overlays
 
 type
   // How cursor field placing will act (depends on which tile LMB was pressed)
@@ -479,6 +484,8 @@ type
     wcFish, //Required for fisherman finding fish in a pond, NOT for fish movement (uses steering). Updated ONLY on load because water doesn't change.
     wcWork  //CanWorker areas
   );
+
+  TKMWalkConnectSet = set of TKMWalkConnect;
 
 
 const
