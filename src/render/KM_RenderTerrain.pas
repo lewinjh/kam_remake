@@ -54,8 +54,8 @@ type
     fTileUVLookup: array [0..TILES_CNT-1, 0..3] of TUVRect;
     fLastBindVBOArrayType: TVBOArrayType;
 //    function TileHasToBeRendered(IsFirst: Boolean; aTX,aTY: Word; aFOW: TKMFogOfWarCommon): Boolean;
-    function GetTileUV(Index: Word; Rot: Byte): TUVRect;
-    procedure BindVBOArray(aVBOArrayType: TVBOArrayType);
+    function GetTileUV(Index: Word; Rot: Byte): TUVRect; inline;
+    procedure BindVBOArray(aVBOArrayType: TVBOArrayType); inline;
     procedure UpdateVBO(aAnimStep: Integer; aFOW: TKMFogOfWarCommon);
     procedure DoTiles(aFOW: TKMFogOfWarCommon);
     procedure DoTilesLayers(aFOW: TKMFogOfWarCommon);
