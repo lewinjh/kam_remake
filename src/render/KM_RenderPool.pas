@@ -259,8 +259,6 @@ begin
 
   Inc(fCounter);
 
-//  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRender);
-
   ApplyTransform;
 
   glPushAttrib(GL_LINE_BIT or GL_POINT_BIT);
@@ -277,63 +275,42 @@ begin
     // Means that Z-test on gpu will take care of clipping the foothill shadows
     glEnable(GL_DEPTH_TEST);
 
-    if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderTer);
-
-    if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderTerBase);
     // Everything flat of terrain
     gPerfLogs.SectionEnter(psFrameTerrain);
     fRenderTerrain.ClipRect := ClipRect;
     fRenderTerrain.RenderBase(gTerrain.AnimStep, gMySpectator.FogOfWar);
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderTerBase);
 
-    if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderFences);
     // Disable depth test //and write to depth buffer,
     // so that terrain shadows could be applied seamlessly ontop
     glDisable(GL_DEPTH_TEST);
 
     fRenderTerrain.RenderFences(gMySpectator.FogOfWar);
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderFences);
-
-    if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderPlans);
     fRenderTerrain.RenderPlayerPlans(fFieldsList, fHousePlansList);
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderPlans);
 
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderTer);
     gPerfLogs.SectionLeave(psFrameTerrain);
 
-    if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderOther);
     RenderMapEdLayers(ClipRect);
 
     // House highlight, debug display
     RenderBackgroundUI(ClipRect);
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderOther);
 
-    if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderList);
     // Sprites are added by Terrain/Players/Projectiles, then sorted by position
     fRenderList.Clear;
     CollectTerrainObjects(ClipRect, gTerrain.AnimStep);
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderList);
 
     PaintFlagPoints(True);
 
-    if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderHands);
     gHands.Paint(ClipRect); // Units and houses
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderHands);
     gProjectiles.Paint;
 
     if gGame.GamePlayInterface <> nil then
       gGame.GamePlayInterface.Alerts.Paint(0);
 
-    if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderList);
     fRenderList.SortRenderList;
     fRenderList.Render;
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderList);
 
-    if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderFOW);
     fRenderTerrain.RenderFOW(gMySpectator.FogOfWar);
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderFOW);
 
-    if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderOther);
     // Alerts/rally second pass is rendered after FOW
     PaintFlagPoints(False);
     if gGame.GamePlayInterface <> nil then
@@ -341,12 +318,8 @@ begin
 
     // Cursor overlays (including blue-wire plans), go on top of everything
     RenderForegroundUI;
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderOther);
 
   glPopAttrib;
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskRender);
-
-  if DO_PERF_LOGGING then gGame.PerfLog.EndTick;
 end;
 
 

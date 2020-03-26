@@ -184,51 +184,46 @@ end;
 procedure TKMGameInputProcess_Multi.TakeCommand(const aCommand: TKMGameInputCommand);
 var I,Tick: Cardinal;
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psGIP);
-  try
-    Assert(fDelay < MAX_SCHEDULE, 'Error, fDelay >= MAX_SCHEDULE');
-    if ((gGame.GameMode = gmMultiSpectate) and not (aCommand.CommandType in AllowedBySpectators)) // Do not allow spectators to command smth
-      or ((gGame.GameMode = gmMulti)                      // in multiplayer game
-        and IsSelectedObjectCommand(aCommand.CommandType) // block only commands for selected object
-        and (gMySpectator.Selected <> nil)                // if there is selected object
-        and not gMySpectator.IsSelectedMyObj) then        // and we try to make command to ally's object
-      Exit;
+  Assert(fDelay < MAX_SCHEDULE, 'Error, fDelay >= MAX_SCHEDULE');
+  if ((gGame.GameMode = gmMultiSpectate) and not (aCommand.CommandType in AllowedBySpectators)) // Do not allow spectators to command smth
+    or ((gGame.GameMode = gmMulti)                      // in multiplayer game
+      and IsSelectedObjectCommand(aCommand.CommandType) // block only commands for selected object
+      and (gMySpectator.Selected <> nil)                // if there is selected object
+      and not gMySpectator.IsSelectedMyObj) then        // and we try to make command to ally's object
+    Exit;
 
-    if gGame.IsPeaceTime and (aCommand.CommandType in BlockedByPeaceTime) then
-    begin
-      gGameApp.Networking.PostLocalMessage(gResTexts[TX_MP_BLOCKED_BY_PEACETIME], csNone);
-      gSoundPlayer.Play(sfxCantPlace);
-      Exit;
-    end;
-
-    if (gGame.GameMode <> gmMultiSpectate) and gMySpectator.Hand.AI.HasLost
-      and not (aCommand.CommandType in AllowedAfterDefeat) then
-    begin
-      gSoundPlayer.Play(sfxCantPlace);
-      Exit;
-    end;
-
-    //Find first unsent pack
-    Tick := MAX_SCHEDULE; //Out of range value
-    for I := gGame.GameTick + fDelay to gGame.GameTick + MAX_SCHEDULE - 1 do
-      if not fSent[I mod MAX_SCHEDULE] then
-      begin
-        Tick := I mod MAX_SCHEDULE; //Place in a ring buffer
-        Break;
-      end;
-    Assert(Tick < MAX_SCHEDULE, 'Could not find place for new commands');
-
-    if not fCommandIssued[Tick] then
-    begin
-      fSchedule[Tick, gGame.Networking.MyIndex].Clear; //Clear old data (it was kept in case it was required for resync)
-      fCommandIssued[Tick] := True;
-    end;
-    fSchedule[Tick, gGame.Networking.MyIndex].Add(aCommand);
-  //  gLog.AddTime(Format('Scheduled cmd Tick: %d, CMD_TYPE = %s',
-  //                      [Tick, GetEnumName(TypeInfo(TKMGameInputCommandType), Integer(aCommand.CommandType))]));
-  finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psGIP);
+  if gGame.IsPeaceTime and (aCommand.CommandType in BlockedByPeaceTime) then
+  begin
+    gGameApp.Networking.PostLocalMessage(gResTexts[TX_MP_BLOCKED_BY_PEACETIME], csNone);
+    gSoundPlayer.Play(sfxCantPlace);
+    Exit;
   end;
+
+  if (gGame.GameMode <> gmMultiSpectate) and gMySpectator.Hand.AI.HasLost
+    and not (aCommand.CommandType in AllowedAfterDefeat) then
+  begin
+    gSoundPlayer.Play(sfxCantPlace);
+    Exit;
+  end;
+
+  //Find first unsent pack
+  Tick := MAX_SCHEDULE; //Out of range value
+  for I := gGame.GameTick + fDelay to gGame.GameTick + MAX_SCHEDULE - 1 do
+    if not fSent[I mod MAX_SCHEDULE] then
+    begin
+      Tick := I mod MAX_SCHEDULE; //Place in a ring buffer
+      Break;
+    end;
+  Assert(Tick < MAX_SCHEDULE, 'Could not find place for new commands');
+
+  if not fCommandIssued[Tick] then
+  begin
+    fSchedule[Tick, gGame.Networking.MyIndex].Clear; //Clear old data (it was kept in case it was required for resync)
+    fCommandIssued[Tick] := True;
+  end;
+  fSchedule[Tick, gGame.Networking.MyIndex].Add(aCommand);
+//  gLog.AddTime(Format('Scheduled cmd Tick: %d, CMD_TYPE = %s',
+//                      [Tick, GetEnumName(TypeInfo(TKMGameInputCommandType), Integer(aCommand.CommandType))]));
 end;
 
 
@@ -403,52 +398,46 @@ var
   I, K, Tick: Cardinal;
 begin
   inherited;
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psGIP);
 
-  try
-    fNumberConsecutiveWaits := 0; //We are not waiting if the game is running
-    Tick := aTick mod MAX_SCHEDULE; //Place in a ring buffer
-    fRandomCheck[Tick].OurCheck := Cardinal(KaMRandom(MaxInt, 'TKMGameInputProcess_Multi.RunningTimer')); //thats our CRC (must go before commands for replay compatibility)
+  fNumberConsecutiveWaits := 0; //We are not waiting if the game is running
+  Tick := aTick mod MAX_SCHEDULE; //Place in a ring buffer
+  fRandomCheck[Tick].OurCheck := Cardinal(KaMRandom(MaxInt, 'TKMGameInputProcess_Multi.RunningTimer')); //thats our CRC (must go before commands for replay compatibility)
 
-    //Execute commands, in order players go (1,2,3..)
-    for I := 1 to fNetworking.NetPlayers.Count do
-      for K := 1 to fSchedule[Tick, I].Count do
-      begin
-        //we should store/execute commands from dropped players too to be in sync with other players,
-        //that could receive mkDisconnect in other tick, then we do
-        if {not fNetworking.NetPlayers[I].Dropped}
-        //Don't allow exploits like moving enemy soldiers (but maybe one day you can control disconnected allies?)
-          (fNetworking.NetPlayers[I].HandIndex = fSchedule[Tick, I].Items[K].HandIndex)
-             or (fSchedule[Tick, I].Items[K].CommandType in AllowedBySpectators) then
-        begin
-          StoreCommand(fSchedule[Tick, I].Items[K]); //Store the command first so if Exec fails we still have it in the replay
-          ExecCommand(fSchedule[Tick, I].Items[K]);
-          //Returning to the lobby ends the game
-          if gGame = nil then Exit;
-        end;
-      end;
-
-    //If we miss a few random checks during reconnections no one cares, inconsistencies will be detected as soon as it is over
-    //To reduce network load, send random checks once every 10 ticks
-    if fNetworking.Connected {and (aTick mod 10 = 1)} then //Todo: remove debug brackets: {} no need to check on every tick in release version
-      SendRandomCheck(aTick);
-
-    //It is possible that we have already recieved other player's random checks, if so check them now
-    for I := 1 to fNetworking.NetPlayers.Count do
+  //Execute commands, in order players go (1,2,3..)
+  for I := 1 to fNetworking.NetPlayers.Count do
+    for K := 1 to fSchedule[Tick, I].Count do
     begin
-      if not fNetworking.NetPlayers[I].Dropped and fRandomCheck[Tick].PlayerCheckPending[I] then
-        DoRandomCheck(aTick, I);
+      //we should store/execute commands from dropped players too to be in sync with other players,
+      //that could receive mkDisconnect in other tick, then we do
+      if {not fNetworking.NetPlayers[I].Dropped}
+      //Don't allow exploits like moving enemy soldiers (but maybe one day you can control disconnected allies?)
+        (fNetworking.NetPlayers[I].HandIndex = fSchedule[Tick, I].Items[K].HandIndex)
+           or (fSchedule[Tick, I].Items[K].CommandType in AllowedBySpectators) then
+      begin
+        StoreCommand(fSchedule[Tick, I].Items[K]); //Store the command first so if Exec fails we still have it in the replay
+        ExecCommand(fSchedule[Tick, I].Items[K]);
+        //Returning to the lobby ends the game
+        if gGame = nil then Exit;
+      end;
     end;
 
-    FillChar(fRecievedData[Tick], SizeOf(fRecievedData[Tick]), #0); //Reset
-    fSent[Tick] := False;
+  //If we miss a few random checks during reconnections no one cares, inconsistencies will be detected as soon as it is over
+  //To reduce network load, send random checks once every 10 ticks
+  if fNetworking.Connected {and (aTick mod 10 = 1)} then //Todo: remove debug brackets: {} no need to check on every tick in release version
+    SendRandomCheck(aTick);
 
-    if aTick mod DELAY_ADJUST = 0 then
-      AdjustDelay(gGame.GameSpeed); //Adjust fDelay every X ticks
-
-  finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psGIP);
+  //It is possible that we have already recieved other player's random checks, if so check them now
+  for I := 1 to fNetworking.NetPlayers.Count do
+  begin
+    if not fNetworking.NetPlayers[I].Dropped and fRandomCheck[Tick].PlayerCheckPending[I] then
+      DoRandomCheck(aTick, I);
   end;
+
+  FillChar(fRecievedData[Tick], SizeOf(fRecievedData[Tick]), #0); //Reset
+  fSent[Tick] := False;
+
+  if aTick mod DELAY_ADJUST = 0 then
+    AdjustDelay(gGame.GameSpeed); //Adjust fDelay every X ticks
 end;
 
 

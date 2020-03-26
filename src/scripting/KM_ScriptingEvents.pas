@@ -374,17 +374,13 @@ procedure TKMScriptEvents.CallEventHandlers(aEventType: TKMScriptEventType; cons
 var
   I: Integer;
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskScripting);
   gPerfLogs.SectionEnter(psScripting, gGame.GameTick);
   try
-
     for I := Low(fEventHandlers[aEventType]) to High(fEventHandlers[aEventType]) do
       CallEventProc(fEventHandlers[aEventType][I].Handler, aParams);
-
   finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskScripting);
+    gPerfLogs.SectionLeave(psScripting);
   end;
-  gPerfLogs.SectionLeave(psScripting);
 end;
 
 

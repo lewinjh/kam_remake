@@ -326,7 +326,6 @@ var
   TexOffsetWater, TexOffsetFalls, TexOffsetSwamp: Word;
 begin
   if not fUseVBO then Exit;
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskUpdateVBO);
   gPerfLogs.SectionEnter(psUpdateVBO, gGame.GameTick);
 
   fLastBindVBOArrayType := vatNone;
@@ -486,7 +485,6 @@ begin
     Inc(I);
   end;
 
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskUpdateVBO);
   gPerfLogs.SectionLeave(psUpdateVBO);
 end;
 
@@ -1165,28 +1163,16 @@ begin
 
   gPerfLogs.SectionEnter(psFrameTerrainBase);
 
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoTiles);
   DoTiles(aFOW);
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoTiles);
   //It was 'unlit water goes above lit sand'
   //But there is no big difference there, that is why, to make possible transitions with water,
   //Water was put before DoLighting
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoWater);
   DoWater(aAnimStep, aFOW);
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoWater);
   //TileLayers after water, as water with animation is always base layer
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoTilesLayers);
   DoTilesLayers(aFOW);
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoTilesLayers);
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoOverlays);
   DoOverlays(aFOW);
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoOverlays);
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoLighting);
   DoLighting(aFOW);
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoLighting);
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoShadows);
   DoShadows(aFOW);
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoShadows);
 
   gPerfLogs.SectionLeave(psFrameTerrainBase);
 end;

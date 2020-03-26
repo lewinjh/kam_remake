@@ -993,20 +993,20 @@ procedure TKMHandsCollection.UpdateState(aTick: Cardinal);
 var
   I: Integer;
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskHands);
-
   gPerfLogs.SectionEnter(psHands, gGame.GameTick);
-  for I := 0 to Count - 1 do
-  if (gGame <> nil) and not gGame.IsPaused and not gGame.IsExiting then
-    fHandsList[I].UpdateState(aTick)
-  else
-    //PlayerAI can stop the game and clear everything
-    Exit;
+  try
+    for I := 0 to Count - 1 do
+    if (gGame <> nil) and not gGame.IsPaused and not gGame.IsExiting then
+      fHandsList[I].UpdateState(aTick)
+    else
+      //PlayerAI can stop the game and clear everything
+      Exit;
 
-  PlayerAnimals.UpdateState(aTick); //Animals don't have any AI yet
+    PlayerAnimals.UpdateState(aTick); //Animals don't have any AI yet
+  finally
+    gPerfLogs.SectionLeave(psHands);
+  end;
 
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskHands);
-  gPerfLogs.SectionLeave(psHands);
 end;
 
 

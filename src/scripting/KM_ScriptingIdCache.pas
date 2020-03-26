@@ -212,26 +212,27 @@ procedure TKMScriptingIdCache.UpdateState;
 var
   I: Integer;
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskScripting);
   gPerfLogs.SectionEnter(psScripting, gGame.GameTick);
-  //Clear out dead IDs every now and again
-  //Leave them in the cache as nils, because we still might need to lookup that UID
-  if gGame.GameTick mod 11 = 0 then
-  begin
-    for I := Low(fUnitCache) to High(fUnitCache) do
-      if (fUnitCache[I].U <> nil) and fUnitCache[I].U.IsDeadOrDying then
-        gHands.CleanUpUnitPointer(fUnitCache[I].U);
+  try
+    //Clear out dead IDs every now and again
+    //Leave them in the cache as nils, because we still might need to lookup that UID
+    if gGame.GameTick mod 11 = 0 then
+    begin
+      for I := Low(fUnitCache) to High(fUnitCache) do
+        if (fUnitCache[I].U <> nil) and fUnitCache[I].U.IsDeadOrDying then
+          gHands.CleanUpUnitPointer(fUnitCache[I].U);
 
-    for I := Low(fHouseCache) to High(fHouseCache) do
-      if (fHouseCache[I].H <> nil) and fHouseCache[I].H.IsDestroyed then
-        gHands.CleanUpHousePointer(fHouseCache[I].H);
+      for I := Low(fHouseCache) to High(fHouseCache) do
+        if (fHouseCache[I].H <> nil) and fHouseCache[I].H.IsDestroyed then
+          gHands.CleanUpHousePointer(fHouseCache[I].H);
 
-    for I := Low(fGroupCache) to High(fGroupCache) do
-      if (fGroupCache[I].G <> nil) and fGroupCache[I].G.IsDead then
-        gHands.CleanUpGroupPointer(fGroupCache[I].G);
+      for I := Low(fGroupCache) to High(fGroupCache) do
+        if (fGroupCache[I].G <> nil) and fGroupCache[I].G.IsDead then
+          gHands.CleanUpGroupPointer(fGroupCache[I].G);
+    end;
+  finally
+    gPerfLogs.SectionLeave(psScripting);
   end;
-  if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskScripting);
-  gPerfLogs.SectionLeave(psScripting);
 end;
 
 

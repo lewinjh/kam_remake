@@ -1271,7 +1271,6 @@ end;
 
 procedure TKMGame.Render(aRender: TRender);
 begin
-  if DO_PERF_LOGGING then gGame.PerfLog.StartRender;
   gPerfLogs.SectionEnter(psFrameFullC, fGameTick);
   gPerfLogs.SectionEnter(psFrameGame);
   try
@@ -1283,8 +1282,6 @@ begin
   finally
     gPerfLogs.SectionLeave(psFrameGame);
     gPerfLogs.SectionLeave(psFrameFullC);
-
-    if DO_PERF_LOGGING then gGame.PerfLog.EndRender;
   end;
 end;
 
@@ -2347,7 +2344,6 @@ begin
                       begin
                         if fGameInputProcess.CommandsConfirmed(fGameTick + 1) then
                         begin
-//                          if DO_PERF_LOGGING then fPerfLog.StartTick(fGameTick + 1);
                           gPerfLogs.StackCPU.TickBegin;
                           gPerfLogs.SectionEnter(psGameTick, fGameTick + 1);
                           try
@@ -2408,7 +2404,6 @@ begin
                             gPerfLogs.SectionLeave(psGameTick);
                             gPerfLogs.StackCPU.TickEnd;
                           end;
-//                          if DO_PERF_LOGGING then fPerfLog.EndTick;
                         end
                         else
                         begin

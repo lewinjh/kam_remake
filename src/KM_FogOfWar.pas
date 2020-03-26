@@ -196,7 +196,6 @@ procedure TKMFogOfWar.RevealCircle(const Pos: TKMPoint; Radius, Amount: Word);
 var
   AroundRadius: Word;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
   gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     AroundRadius := Radius + RENDER_RADIUS_ADD;
@@ -217,9 +216,8 @@ begin
       RevealFor(False, AroundRadius, FOG_OF_WAR_MAX);
     end;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
+    gPerfLogs.SectionLeave(psGameFOW);
   end;
-  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -252,7 +250,6 @@ procedure TKMFogOfWar.CoverCircle(const Pos: TKMPoint; Radius: Word);
   end;
 
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
   gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     CoverFor(True, Radius);
@@ -260,9 +257,8 @@ begin
 
     fCoverHasBeenCalled := True;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
+    gPerfLogs.SectionLeave(psGameFOW);
   end;
-  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -270,7 +266,6 @@ procedure TKMFogOfWar.RevealRect(const TL, BR: TKMPoint; Amount: Word);
 var
   I, K: Word;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
   gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     for I := TL.Y to BR.Y do
@@ -286,9 +281,8 @@ begin
       for K := Max(0, TL.X - RENDER_RADIUS_ADD) to Min(fMapX - 1, BR.X + RENDER_RADIUS_ADD) do
         RenderRevelation[I,K] := FOG_OF_WAR_MAX;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
+    gPerfLogs.SectionLeave(psGameFOW);
   end;
-  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -296,7 +290,6 @@ procedure TKMFogOfWar.CoverRect(const TL, BR: TKMPoint);
 var
   I, K: Word;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
   gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     for I := TL.Y to BR.Y do
@@ -310,9 +303,8 @@ begin
 
     fCoverHasBeenCalled := True;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
+    gPerfLogs.SectionLeave(psGameFOW);
   end;
-  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -321,7 +313,6 @@ procedure TKMFogOfWar.RevealEverything;
 var
   I,K: Word;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
   gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     for I := 0 to fMapY - 1 do
@@ -331,9 +322,8 @@ begin
         RenderRevelation[I, K] := FOG_OF_WAR_MAX;
       end;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
+    gPerfLogs.SectionLeave(psGameFOW);
   end;
-  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -341,7 +331,6 @@ procedure TKMFogOfWar.CoverEverything;
 var
   I,K: Word;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
   gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     for I := 0 to fMapY - 1 do
@@ -353,9 +342,8 @@ begin
 
     fCoverHasBeenCalled := True;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
+    gPerfLogs.SectionLeave(psGameFOW);
   end;
-  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 
@@ -382,68 +370,37 @@ end;
 
 function TKMFogOfWar.CheckVerticeRevelation(const X, Y: Word): Byte;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck);
-  try
-    Result := CheckVerticeRev(@Revelation, X, Y);
-  finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck);
-  end;
+  Result := CheckVerticeRev(@Revelation, X, Y);
 end;
 
 
 function TKMFogOfWar.CheckRevelation(const aPoint: TKMPointF): Byte;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck);
-  try
-    Result := CheckRev(@Revelation, aPoint);
-  finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck);
-  end;
+  Result := CheckRev(@Revelation, aPoint);
 end;
 
 
 function TKMFogOfWar.CheckTileRevelation(const X, Y: Word): Byte;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck3);
-  try
-    Result := CheckTileRev(@Revelation, X, Y);
-  finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck3);
-  end;
+  Result := CheckTileRev(@Revelation, X, Y);
 end;
 
 
 function TKMFogOfWar.CheckVerticeRenderRev(const X, Y: Word): Byte;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck);
-  try
-    Result := CheckVerticeRev(@RenderRevelation, X, Y);
-  finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck);
-  end;
+  Result := CheckVerticeRev(@RenderRevelation, X, Y);
 end;
 
 
 function TKMFogOfWar.CheckTileRenderRev(const X, Y: Word): Byte;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck5);
-//  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck6);
-  try
-    Result := CheckTileRev(@RenderRevelation, X, Y);
-  finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck5);
-  end;
+  Result := CheckTileRev(@RenderRevelation, X, Y);
 end;
 
 
 function TKMFogOfWar.CheckRenderRev(const aPoint: TKMPointF): Byte;
 begin
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(psFOWCheck);
-  try
-    Result := CheckRev(@RenderRevelation, aPoint);
-  finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(psFOWCheck);
-  end;
+  Result := CheckRev(@RenderRevelation, aPoint);
 end;
 
 
@@ -580,7 +537,6 @@ var
 begin
   if not gGameApp.DynamicFOWEnabled then Exit;
 
-  if DO_PERF_LOGGING then gGameApp.Game.PerfLog.EnterSection(pskFOW);
   gPerfLogs.SectionEnter(psGameFOW, gGameApp.Game.GameTick);
   try
     Inc(fAnimStep);
@@ -608,9 +564,8 @@ begin
           end;}
         end;
   finally
-    if DO_PERF_LOGGING then gGameApp.Game.PerfLog.LeaveSection(pskFOW);
+    gPerfLogs.SectionLeave(psGameFOW);
   end;
-  gPerfLogs.SectionLeave(psGameFOW);
 end;
 
 

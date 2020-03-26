@@ -26,13 +26,8 @@ procedure TKMGameInputProcess_Single.TakeCommand(const aCommand: TKMGameInputCom
 begin
   if gGame.IsReplay then Exit;
 
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psGIP);
-  try
-    StoreCommand(aCommand); //Store the command for the replay (store it first in case Exec crashes and we want to debug it)
-    ExecCommand(aCommand);  //Execute the command now
-  finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psGIP);
-  end;
+  StoreCommand(aCommand); //Store the command for the replay (store it first in case Exec crashes and we want to debug it)
+  ExecCommand(aCommand);  //Execute the command now
 end;
 
 
@@ -75,13 +70,8 @@ end;
 procedure TKMGameInputProcess_Single.RunningTimer(aTick: Cardinal);
 begin
   inherited;
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psGIP);
 
-  try
-    KaMRandom(MaxInt, 'TKMGameInputProcess_Single.RunningTimer'); //This is to match up with multiplayer CRC generation, so multiplayer replays can be replayed in singleplayer mode
-  finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psGIP);
-  end;
+  KaMRandom(MaxInt, 'TKMGameInputProcess_Single.RunningTimer'); //This is to match up with multiplayer CRC generation, so multiplayer replays can be replayed in singleplayer mode
 end;
 
 

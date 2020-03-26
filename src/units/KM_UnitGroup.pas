@@ -1880,7 +1880,6 @@ var
   NewOrder: TKMCardinalArray;
   NewMembers: TList;
 begin
-//  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskHungarian);
   gPerfLogs.SectionEnter(psHungarian, gGame.GameTick);
   try
     if not HUNGARIAN_GROUP_ORDER then Exit;
@@ -1912,7 +1911,6 @@ begin
     Agents.Free;
     Tasks.Free;
   finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskHungarian);
     gPerfLogs.SectionLeave(psHungarian);
   end;
 end;

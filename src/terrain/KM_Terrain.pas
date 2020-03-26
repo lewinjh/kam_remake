@@ -4522,7 +4522,6 @@ var
   T: Integer;
 begin
   if not DYNAMIC_TERRAIN then Exit;
-  if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(pskTerrain);
   gPerfLogs.SectionEnter(psTerrain, gGame.GameTick);
   try
     inc(fAnimStep);
@@ -4588,9 +4587,8 @@ begin
       Inc(A, TERRAIN_PACE);
     end;
   finally
-    if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(pskTerrain);
+    gPerfLogs.SectionLeave(psTerrain);
   end;
-  gPerfLogs.SectionLeave(psTerrain);
 end;
 
 
