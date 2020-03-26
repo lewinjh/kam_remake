@@ -86,6 +86,8 @@ begin
 
   if not fBlind then
   begin
+    fQuery := TKMRenderQuery.Create;
+
     fRenderControl.CreateRenderContext;
 
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, @MaxTextureSize); //Get max supported texture size by video adapter
@@ -121,7 +123,11 @@ end;
 destructor TRender.Destroy;
 begin
   if not fBlind then
+  begin
     fRenderControl.DestroyRenderContext;
+    fQuery.Free;
+  end;
+
   inherited;
 end;
 

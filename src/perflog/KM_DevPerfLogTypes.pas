@@ -8,10 +8,7 @@ type
     psGameTick,
       psHands,
         psUnits,
-        psGroups,
-        psHouses,
         psDelivery,
-//        psBuildlist,
         psWalkConnect,
       psGameFOW,
       psPathfinding,
@@ -29,12 +26,17 @@ type
     psFrameFullC,                 // Full render frame as seen by gMain
     psFrameFullG,                 // Full render frame on GPU (doublecheck TKMPerfLogGFXStack)
       psFrameGame,                // Frame of the Gameplay without GUI
+        psFrameTerrain,
+          psFrameTerrainBase,
+            psFrameTiles,
+            psFrameWater,
+            psFrameTilesLayers,
+            psFrameOverlays,
+            psFrameLighting,
+            psFrameShadows,
+        psFrameHands,
+        psFrameRenderList,
         psFrameFOW,
-        psFrameShadows,
-        psFrameWaterReflections,
-        psFrameRebuildGeoChunk,   // Rebuilding of GeoBlock happens within Render, so we count it here
-        psFrameRebuildWaterChunk,   // Rebuilding of GeoBlock happens within Render, so we count it here
-        psFrameNavDebug,          // Navigation debug display
       psFrameGui                  // Frame of the Gameplay GUI
   );
   TPerfSectionSet = set of TPerfSectionDev;

@@ -46,7 +46,7 @@ object FormPerfLogs: TFormPerfLogs
     MaxValue = 100
     MinValue = 1
     TabOrder = 1
-    Value = 5
+    Value = 20
     OnChange = DoChange
   end
   object cbStackedCPU: TCheckBox

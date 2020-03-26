@@ -102,7 +102,7 @@ begin
       begin
         CheckBoxes[PS, 0].Checked := fPerfLogs[PS].Enabled;
         CheckBoxes[PS, 1].Checked := fPerfLogs[PS].Display;
-        CheckBoxes[PS, 2].Checked := fPerfLogs.StackCPU[PS].Show;
+        CheckBoxes[PS, 2].Checked := fPerfLogs.StackCPU[PS].Show or fPerfLogs.StackGFX[PS].Show;
 
         shp := TShape.Create(Self);
         shp.Parent := Self;
@@ -114,7 +114,6 @@ begin
       begin
         CheckBoxes[PS, 0].AllowGrayed := True;
         CheckBoxes[PS, 1].AllowGrayed := True;
-//        CheckBoxes[I, 2].Checked := True;
         CheckBoxes[PS, 2].AllowGrayed := True;
       end;
 
@@ -212,7 +211,10 @@ begin
     if Sender = CheckBoxes[section, 0] then
     begin
       fPerfLogs[section].Enabled := TCheckBox(Sender).Checked;
-      fPerfLogs.StackCPU[section].Enabled := TCheckBox(Sender).Checked;
+      if TKMPerfLogs.IsCPUSection(section) then
+        fPerfLogs.StackCPU[section].Enabled := TCheckBox(Sender).Checked
+      else
+        fPerfLogs.StackGFX[section].Enabled := TCheckBox(Sender).Checked;
     end
     else
     begin
@@ -224,12 +226,23 @@ begin
       else
       if Sender = CheckBoxes[section, 2] then
       begin
-        fPerfLogs.StackCPU[section].Show := TCheckBox(Sender).Checked;
-        fPerfLogs.StackCPU[section].Enabled := fPerfLogs.StackCPU.SectionData[section].Enabled
-                                               or TCheckBox(Sender).Checked;
+        if TKMPerfLogs.IsCPUSection(section) then
+        begin
+          fPerfLogs.StackCPU[section].Show := TCheckBox(Sender).Checked;
+          fPerfLogs.StackCPU[section].Enabled := fPerfLogs.StackCPU.SectionData[section].Enabled
+                                                 or TCheckBox(Sender).Checked;
+        end
+        else
+        begin
+          fPerfLogs.StackGFX[section].Show := TCheckBox(Sender).Checked;
+          fPerfLogs.StackGFX[section].Enabled := fPerfLogs.StackGFX.SectionData[section].Enabled
+                                                 or TCheckBox(Sender).Checked;
+        end;
       end;
 
-      CheckBoxes[section, 0].Checked := fPerfLogs[section].Enabled or fPerfLogs.StackCPU.SectionData[section].Enabled;
+      CheckBoxes[section, 0].Checked := fPerfLogs[section].Enabled
+                                        or fPerfLogs.StackCPU.SectionData[section].Enabled
+                                        or fPerfLogs.StackGFX.SectionData[section].Enabled;
     end;
 
     if not fAllClicked then

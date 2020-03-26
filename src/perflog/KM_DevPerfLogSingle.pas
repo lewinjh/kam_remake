@@ -160,7 +160,6 @@ begin
 
   // Chart
   gRenderAux.Line(vaChart, Color);
-//  gRenderLow.RenderLine2(vaChart, Color, 1, lmStrip)
 end;
 
 

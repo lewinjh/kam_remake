@@ -1273,6 +1273,7 @@ procedure TKMGame.Render(aRender: TRender);
 begin
   if DO_PERF_LOGGING then gGame.PerfLog.StartRender;
   gPerfLogs.SectionEnter(psFrameFullC, fGameTick);
+  gPerfLogs.SectionEnter(psFrameGame);
   try
     gRenderPool.Render;
 
@@ -1280,6 +1281,7 @@ begin
     fActiveInterface.Paint;
 
   finally
+    gPerfLogs.SectionLeave(psFrameGame);
     gPerfLogs.SectionLeave(psFrameFullC);
 
     if DO_PERF_LOGGING then gGame.PerfLog.EndRender;

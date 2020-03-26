@@ -9,29 +9,6 @@ uses
 
 
 type
-//  TPerfSectionDev = (
-//    psNone,
-//    psGameTick,
-//      psHands,
-//      psGameFOW,
-//      psPathfinding,
-//      psHungarian,
-//      psAIFields,
-//      psTerrain,
-//      psTerrainFinder,
-//    psFrameFullC,                 // Full render frame as seen by gMain
-//    psFrameFullG,                 // Full render frame on GPU (doublecheck TKMPerfLogGFXStack)
-//      psFrameGame,                // Frame of the Gameplay without GUI
-//        psFrameFOW,
-//        psFrameShadows,
-//        psFrameWaterReflections,
-//        psFrameRebuildGeoChunk,   // Rebuilding of GeoBlock happens within Render, so we count it here
-//        psFrameRebuildWaterChunk,   // Rebuilding of GeoBlock happens within Render, so we count it here
-//        psFrameNavDebug,          // Navigation debug display
-//      psFrameGui                  // Frame of the Gameplay GUI
-//  );
-//  TPerfSectionSet = set of TPerfSectionDev;
-
   // Collection of PerfLoggers
   TKMPerfLogs = class
   private
@@ -61,6 +38,9 @@ type
     procedure Render(aLeft, aWidth, aHeight: Integer);
     procedure SaveToFile(aFilename: string; aSaveThreshold: Integer = 10);
     procedure ShowForm(aContainer: TWinControl);
+
+    class function IsCPUSection(aSection: TPerfSectionDev): Boolean;
+    class function IsGFXSection(aSection: TPerfSectionDev): Boolean;
   end;
 
 
@@ -78,10 +58,7 @@ const
     (Name: 'GameTick';                ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:1;B:0);),
     (Name: '   Hands';                ClassName: TKMPerfLogSingleCPU; Color: (R:1;G:0.25;B:0);),
     (Name: '     Units';              ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.5;B:0.5);),
-    (Name: '     Groups';             ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.75;B:0.75);),
-    (Name: '     Houses';             ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:1;B:1);),
     (Name: '     Deliveries';         ClassName: TKMPerfLogSingleCPU; Color: (R:0.75;G:0.25;B:0.25);),
-//    (Name: '     Buildlist';          ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:0.25;B:0.25);),
     (Name: '     WalkConnect';        ClassName: TKMPerfLogSingleCPU; Color: (R:1;G:0.75;B:0.75);),
     (Name: '   FOW';                  ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.75;B:0);),
     (Name: '   Pathfinding';          ClassName: TKMPerfLogSingleCPU; Color: (R:0.0;G:1;B:0.75);),
@@ -94,20 +71,24 @@ const
     (Name: '     AI Army Classic';    ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:0.5;B:0.25);),
     (Name: '   Terrain';              ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:0.5;B:0.5);),
     (Name: '   TerrainFinder';        ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:1;B:1);),
-    (Name: '   Scripting';            ClassName: TKMPerfLogSingleCPU; Color: (R:0.25;G:1;B:1);),
+    (Name: '   Scripting';            ClassName: TKMPerfLogSingleCPU; Color: (R:1;G:0.25;B:0.75);),
     (Name: '   UpdateVBO';            ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:0.5;B:1);),
     (Name: 'Render.CPU';              ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:0;B:0);),
     (Name: 'Render.GFX';              ClassName: TKMPerfLogSingleGFX; Color: (R:1.0;G:1;B:0);),
-    (Name: '   Game';                 ClassName: TKMPerfLogSingleCPU; Color: (R:0.75;G:0.75;B:0);),
-    (Name: '      FOW';               ClassName: TKMPerfLogSingleCPU; Color: (R:0;G:0.75;B:0);),
-    (Name: '      Shadows';           ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:0;B:1.0);),
-    (Name: '      WaterReflections';  ClassName: TKMPerfLogSingleCPU; Color: (R:0.0;G:0.25;B:1);),
-    (Name: '      RebuildGeoChunk';   ClassName: TKMPerfLogSingleCPU; Color: (R:0.5;G:1;B:0.5);),
-    (Name: '      RebuildWaterChunk'; ClassName: TKMPerfLogSingleCPU; Color: (R:0.0;G:1;B:0.5);),
-    (Name: '      NavigationDebug';   ClassName: TKMPerfLogSingleCPU; Color: (R:0.0;G:1;B:0.75);),
-    (Name: '   GUI';                  ClassName: TKMPerfLogSingleCPU; Color: (R:1.0;G:0.25;B:0);)
+    (Name: '   Game';                 ClassName: TKMPerfLogSingleGFX; Color: (R:0.75;G:0.75;B:0);),
+    (Name: '      Terrain';           ClassName: TKMPerfLogSingleGFX; Color: (R:0;G:0.25;B:0.25);),
+    (Name: '        TerBase';         ClassName: TKMPerfLogSingleGFX; Color: (R:0;G:0.5;B:0.25);),
+    (Name: '         Tiles';          ClassName: TKMPerfLogSingleGFX; Color: (R:0.25;G:0;B:0.25);),
+    (Name: '         Water';          ClassName: TKMPerfLogSingleGFX; Color: (R:0.25;G:0;B:0.5);),
+    (Name: '         Layers';         ClassName: TKMPerfLogSingleGFX; Color: (R:0.5;G:0;B:0.25);),
+    (Name: '         Overlays';       ClassName: TKMPerfLogSingleGFX; Color: (R:0.5;G:0.5;B:0.25);),
+    (Name: '         Light';          ClassName: TKMPerfLogSingleGFX; Color: (R:0.5;G:0.25;B:0);),
+    (Name: '         Shadows';        ClassName: TKMPerfLogSingleGFX; Color: (R:0.75;G:0.5;B:0);),
+    (Name: '      Hands';             ClassName: TKMPerfLogSingleGFX; Color: (R:1;G:1;B:0.5);),
+    (Name: '      RenderList';        ClassName: TKMPerfLogSingleGFX; Color: (R:0.5;G:1;B:0.75);),
+    (Name: '      FOW';               ClassName: TKMPerfLogSingleGFX; Color: (R:0.75;G:1;B:0.75);),
+    (Name: '   GUI';                  ClassName: TKMPerfLogSingleGFX; Color: (R:1.0;G:0.25;B:0);)
   );
-
 
 var
   gPerfLogs: TKMPerfLogs;
@@ -126,7 +107,7 @@ var
 begin
   inherited Create;
 
-  FrameBudget := 5;
+  FrameBudget := 20;
 
   for I := LOW_PERF_SECTION to High(TPerfSectionDev) do
   begin
@@ -184,6 +165,18 @@ begin
 end;
 
 
+class function TKMPerfLogs.IsCPUSection(aSection: TPerfSectionDev): Boolean;
+begin
+  Result := SECTION_INFO[aSection].ClassName = TKMPerfLogSingleCPU;
+end;
+
+
+class function TKMPerfLogs.IsGFXSection(aSection: TPerfSectionDev): Boolean;
+begin
+  Result := SECTION_INFO[aSection].ClassName = TKMPerfLogSingleGFX;
+end;
+
+
 function TKMPerfLogs.GetStackCPU: TKMPerfLogStackCPU;
 begin
   // This easy check allows us to exit if the Log was not initialized, e.g. in utils
@@ -199,7 +192,11 @@ begin
   if Self = nil then Exit;
 
   fItems[aSection].SectionEnter(aTick, aTag);
-  fStackCPU.SectionEnter(aSection);
+
+  if SECTION_INFO[aSection].ClassName = TKMPerfLogSingleCPU then
+    fStackCPU.SectionEnter(aSection)
+  else
+    fStackGFX.SectionEnter(aSection);
 end;
 
 
@@ -208,7 +205,11 @@ begin
   if Self = nil then Exit;
 
   fItems[aSection].SectionLeave;
-  fStackCPU.SectionRollback(aSection);
+
+  if SECTION_INFO[aSection].ClassName = TKMPerfLogSingleCPU then
+    fStackCPU.SectionRollback(aSection)
+  else
+    fStackGFX.SectionRollback(aSection);
 end;
 
 
@@ -239,13 +240,12 @@ var
 const
   PAD_SIDE = 40;
   PAD_Y = 10;
-  SCALE_Y = 768; // Draw chart 500 px high
   EMA_ALPHA = 0.075; // Exponential Moving Average alpha, picked empirically
   X_TICKS_CNT = 10;
   X_TICKS_FREQ = 100;
 var
   PS: TPerfSectionDev;
-  I, K, off, xTick, ticksCnt: Integer;
+  I, K, off, xTick, ticksCnt, scaleY: Integer;
   needChart: Boolean;
   x, y: Single;
   lbl: string;
@@ -253,19 +253,21 @@ begin
   lastTick := 0;
   cCount := 0;
 
+  scaleY := aHeight;
+
   UpdateCntNLastTick(fStackCPU.Count, fStackCPU.Count);
   UpdateCntNLastTick(fStackGFX.Count, fStackGFX.Count);
 
   for PS := LOW_PERF_SECTION to High(TPerfSectionDev) do
   begin
-    fItems[PS].Render(aLeft + PAD_SIDE, aLeft + aWidth - PAD_SIDE * 2, aHeight - PAD_Y, SCALE_Y, EMA_ALPHA, FrameBudget, Smoothing);
+    fItems[PS].Render(aLeft + PAD_SIDE, aLeft + aWidth - PAD_SIDE * 2, aHeight - PAD_Y, scaleY, EMA_ALPHA, FrameBudget, Smoothing);
     UpdateCntNLastTick(fItems[PS].Count, fItems[PS].EnterTick);
   end;
 
   // Stacked chart
-  fStackCPU.Render(aLeft + PAD_SIDE, aLeft + aWidth - PAD_SIDE * 2, aHeight - PAD_Y, SCALE_Y, EMA_ALPHA, FrameBudget, Smoothing);
-//  fStackGFX.Render(PAD_SIDE, aWidth - PAD_SIDE * 2, aHeight - PAD_Y, SCALE_Y, EMA_ALPHA, FrameBudget, Smoothing);
-//
+  fStackCPU.Render(aLeft + PAD_SIDE, aLeft + aWidth - PAD_SIDE * 2, aHeight - PAD_Y, scaleY, EMA_ALPHA, FrameBudget, Smoothing);
+  fStackGFX.Render(aLeft + PAD_SIDE, aLeft + aWidth - PAD_SIDE * 2, aHeight - PAD_Y, scaleY, EMA_ALPHA, FrameBudget, Smoothing);
+
   needChart := fStackCPU.Display or fStackGFX.Display;
   for PS := LOW_PERF_SECTION to High(TPerfSectionDev) do
     needChart := needChart or fItems[PS].Display;
@@ -278,7 +280,7 @@ begin
     // Y-axis ticks
     for K := 0 to 10 do
     begin
-      y := SCALE_Y / 10 * K;
+      y := scaleY / 10 * K;
       gRenderAux.Line(aLeft + PAD_SIDE + 0.5, aHeight - PAD_Y + 0.5 - y, aLeft + PAD_SIDE - 3.5, aHeight - PAD_Y + 0.5 - y, icWhite);
 
       lbl := FormatFloat('##0.#', FrameBudget / 10 * K) + 'ms';
@@ -302,7 +304,7 @@ begin
       //Tick mark
       gRenderAux.Line(x, y - 3, x, y + 3, icWhite);
       //Tick vertical dashed line
-      gRenderAux.Line(x, y - SCALE_Y, x, y, icLightGray, $F0F0);
+      gRenderAux.Line(x, y - scaleY, x, y, icLightGray, $F0F0);
     end;
   end;
 end;

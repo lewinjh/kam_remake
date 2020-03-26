@@ -1036,17 +1036,26 @@ begin
   if not fTimerUI.Enabled then Exit; //Don't render while toggling locale
 
   gRender.BeginFrame;
+  gPerfLogs.StackGFX.FrameBegin;
+  gPerfLogs.SectionEnter(psFrameFullG);
 
-  if gGame <> nil then
-    gGame.Render(gRender)
-  else
-    fMainMenuInterface.Paint;
+  try
+    if gGame <> nil then
+      gGame.Render(gRender)
+    else
+      fMainMenuInterface.Paint;
 
-  gRender.RenderBrightness(GameSettings.Brightness);
+    gRender.RenderBrightness(GameSettings.Brightness);
+
+  finally
+    gPerfLogs.SectionLeave(psFrameFullG);
+    gPerfLogs.StackGFX.FrameEnd;
+  end;
 
   gPerfLogs.Render(TOOLBAR_WIDTH + 10, gMain.FormMain.RenderArea.Width - 10, gMain.FormMain.RenderArea.Height - 10);
 
   gRender.EndFrame;
+  gRender.Query.QueriesSwapBuffers;
 
   fLastTimeRender := TimeGet;
 

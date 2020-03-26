@@ -70,6 +70,7 @@ object FormMain: TFormMain
     Top = 0
     Width = 300
     Height = 765
+    VertScrollBar.Position = 42
     VertScrollBar.Tracking = True
     Align = alRight
     HeaderFont.Charset = DEFAULT_CHARSET
@@ -81,13 +82,11 @@ object FormMain: TFormMain
     HeaderStyle = hsThemed
     TabOrder = 1
     object cpLogs: TCategoryPanel
-      Top = 869
+      Top = 1027
       Height = 24
       Caption = 'Logs'
       Collapsed = True
       TabOrder = 0
-      ExplicitTop = 719
-      ExplicitWidth = 298
       ExpandedHeight = 179
       object chkLogCommands: TCheckBox
         Left = 100
@@ -162,13 +161,11 @@ object FormMain: TFormMain
       end
     end
     object cpGraphicTweaks: TCategoryPanel
-      Top = 845
+      Top = 1003
       Height = 24
       Caption = 'Graphic tweaks'
       Collapsed = True
       TabOrder = 1
-      ExplicitTop = 695
-      ExplicitWidth = 298
       ExpandedHeight = 124
       object Label1: TLabel
         Left = 101
@@ -266,13 +263,11 @@ object FormMain: TFormMain
       end
     end
     object cpUserInreface: TCategoryPanel
-      Top = 821
+      Top = 979
       Height = 24
       Caption = 'User Interface'
       Collapsed = True
       TabOrder = 2
-      ExplicitTop = 671
-      ExplicitWidth = 298
       ExpandedHeight = 72
       object chkUIControlsBounds: TCheckBox
         Left = 8
@@ -303,13 +298,11 @@ object FormMain: TFormMain
       end
     end
     object cpAI: TCategoryPanel
-      Top = 797
+      Top = 955
       Height = 24
       Caption = 'AI'
       Collapsed = True
       TabOrder = 3
-      ExplicitTop = 647
-      ExplicitWidth = 298
       ExpandedHeight = 166
       object Label5: TLabel
         Left = 106
@@ -469,20 +462,19 @@ object FormMain: TFormMain
       end
     end
     object cpPerfLogs: TCategoryPanel
-      Top = 97
-      Height = 700
+      Top = 55
+      Height = 900
       Caption = 'Perf Logs'
       TabOrder = 4
     end
     object cpDebugRender: TCategoryPanel
-      Top = 73
+      Top = 31
       Height = 24
       Caption = 'Debug Render'
       Collapsed = True
       DoubleBuffered = True
       ParentDoubleBuffered = False
       TabOrder = 5
-      ExplicitWidth = 298
       ExpandedHeight = 215
       object Label2: TLabel
         Left = 100
@@ -641,12 +633,11 @@ object FormMain: TFormMain
       end
     end
     object cpGameAdv: TCategoryPanel
-      Top = 49
+      Top = 7
       Height = 24
       Caption = 'Game additional'
       Collapsed = True
       TabOrder = 6
-      ExplicitWidth = 298
       ExpandedHeight = 152
       object chkLoadUnsupSaves: TCheckBox
         Left = 12
@@ -691,11 +682,10 @@ object FormMain: TFormMain
       end
     end
     object cpGameControls: TCategoryPanel
-      Top = 0
+      Top = -42
       Height = 49
       Caption = 'Game '
       TabOrder = 7
-      ExplicitWidth = 298
       object chkSuperSpeed: TCheckBox
         Left = 8
         Top = 5

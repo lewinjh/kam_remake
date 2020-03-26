@@ -236,12 +236,12 @@ begin
 end;
 
 
-//function TileHasToBeRendered(IsFirst: Boolean; aTX,aTY: Word; aFOW: TKMFogOfWarCommon): Boolean; inline;
-//begin
-//  // We have to render at least 1 tile (otherwise smth wrong with gl contex and all UI and other sprites are not rendered at all
-//  // so lets take the 1st tile
-//  Result := True;//IsFirst or (aFOW.CheckTileRenderRev(aTX,aTY) > FOG_OF_WAR_MIN);
-//end;
+function TileHasToBeRendered(IsFirst: Boolean; aTX,aTY: Word; aFOW: TKMFogOfWarCommon): Boolean; inline;
+begin
+  // We have to render at least 1 tile (otherwise smth wrong with gl contex and all UI and other sprites are not rendered at all
+  // so lets take the 1st tile
+  Result := SHOW_FPS or IsFirst or (aFOW.CheckTileRenderRev(aTX,aTY) > FOG_OF_WAR_MIN);
+end;
 
 
 procedure TRenderTerrain.UpdateVBO(aAnimStep: Integer; aFOW: TKMFogOfWarCommon);
@@ -367,8 +367,8 @@ begin
           tX := J + fClipRect.Left;
           tY := I + fClipRect.Top;
 
-//          if TileHasToBeRendered(I*J = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
-//          begin
+          if TileHasToBeRendered(I*J = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+          begin
             TexTileC := fTileUVLookup[Land[tY, tX].BaseLayer.Terrain, Land[tY, tX].BaseLayer.Rotation mod 4];
 
             //Fill Tile vertices array
@@ -390,7 +390,7 @@ begin
 //                SetTileVertex(fTilesLayersVtx, P+3, tX,   tY-1, False, TexTileC[4][1], TexTileC[4][2]);
 //                P := P + 4;
 //              end;
-//          end;
+          end;
 
           // Always set FOW
           SetTileFowVertex(fTilesFowVtx, Fog, F,   tX-1, tY-1, False);
@@ -400,7 +400,7 @@ begin
           F := F + 4;
 
           //Fill tiles animation vertices array
-//          if (aFOW.CheckTileRenderRev(tX,tY) > FOG_OF_WAR_ACT) then // Render animation only if tile is not covered by FOW
+          if (aFOW.CheckTileRenderRev(tX,tY) > FOG_OF_WAR_ACT) then // Render animation only if tile is not covered by FOW
             if not TryAddAnimTex(Q, tX, tY, TexOffsetWater) then  //every tile can have only 1 animation
               if not TryAddAnimTex(Q, tX, tY, TexOffsetFalls) then
                 TryAddAnimTex(Q, tX, tY, TexOffsetSwamp);
@@ -428,8 +428,8 @@ begin
   for I := 0 to SizeY do
     for J := 0 to SizeX do
     begin
-//      tX := J + fClipRect.Left;
-//      tY := I + fClipRect.Top;
+      tX := J + fClipRect.Left;
+      tY := I + fClipRect.Top;
       // Set FOW indices
       Buf := KF shl 2;
       fTilesFowInd[F+0] := Buf; // shl 2 = *4
@@ -440,8 +440,8 @@ begin
       fTilesFowInd[F+5] := Buf + 2;
       F := F + 6;
       Inc(KF);
-//      if TileHasToBeRendered(I*J = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
-//      begin
+      if TileHasToBeRendered(I*J = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+      begin
         // Set Tile terrain indices
         Buf := K shl 2;
         fTilesInd[H+0] := Buf; // shl 2 = *4
@@ -465,7 +465,7 @@ begin
 //            P := P + 6;
 //            Inc(KP);
 //          end;
-//      end;
+      end;
     end;
 
   AnimCnt := Q div 4;
@@ -557,6 +557,7 @@ var
   SizeX, SizeY: Word;
   tX, tY: Word;
 begin
+  gPerfLogs.SectionEnter(psFrameTiles);
   //First we render base layer, then we do animated layers for Water/Swamps/Waterfalls
   //They all run at different speeds so we can't adjoin them in one layer
   glColor4f(1,1,1,1);
@@ -592,8 +593,8 @@ begin
         begin
           tX := K + fClipRect.Left;
           tY := I + fClipRect.Top;
-//          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
-//          begin
+          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+          begin
             with Land[tY,tX] do
             begin
               TRender.BindTexture(gGFXData[rxTiles, BaseLayer.Terrain+1].Tex.ID);
@@ -603,9 +604,10 @@ begin
 
             RenderQuadTexture(TexC, tX, tY);
             glEnd;
-//          end;
+          end;
         end;
   end;
+  gPerfLogs.SectionLeave(psFrameTiles);
 end;
 
 
@@ -617,6 +619,7 @@ var
   tX, tY: Word;
   TerInfo: TKMGenTerrainInfo;
 begin
+  gPerfLogs.SectionEnter(psFrameTilesLayers);
   //First we render base layer, then we do animated layers for Water/Swamps/Waterfalls
   //They all run at different speeds so we can't adjoin them in one layer
   glColor4f(1,1,1,1);
@@ -657,7 +660,7 @@ begin
         begin
           tX := K + fClipRect.Left;
           tY := I + fClipRect.Top;
-//          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
             for L := 0 to Land[tY,tX].LayersCnt - 1 do
             begin
               with Land[tY,tX] do
@@ -680,6 +683,7 @@ begin
         end;
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //Just in case...
   end;
+  gPerfLogs.SectionLeave(psFrameTilesLayers);
 end;
 
 
@@ -690,6 +694,7 @@ var
   TexC: TUVRect;
   TexOffset: Word;
 begin
+  gPerfLogs.SectionEnter(psFrameWater);
   //First we render base layer, then we do animated layers for Water/Swamps/Waterfalls
   //They all run at different speeds so we can't adjoin them in one layer
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -741,6 +746,7 @@ begin
           end;
     end;
   end;
+  gPerfLogs.SectionLeave(psFrameWater);
 end;
 
 
@@ -755,10 +761,11 @@ const
     (248,0), (248,0), (250,0), (252,0),
     (248,1), (250,2), (248,1), (252,3),
     (250,1), (252,2), (252,1), (254,0));
-var Road, ID, Rot: Byte;
+var
+  Road, ID, Rot: Byte;
 begin
-//  if TileHasToBeRendered(False,pX,pY,aFow) then
-//  begin
+  if TileHasToBeRendered(False,pX,pY,aFow) then
+  begin
     case gTerrain.Land[pY, pX].TileOverlay of
       toDig1:  RenderTile(249, pX, pY, 0, DoHighlight, HighlightColor);
       toDig2:  RenderTile(251, pX, pY, 0, DoHighlight, HighlightColor);
@@ -785,7 +792,7 @@ begin
        1: RenderTile(gTerrain.Land[pY, pX].CornOrWineTerrain, pX, pY, 0, DoHighlight, HighlightColor);
        2: RenderTile(55, pX, pY, 0, DoHighlight, HighlightColor);
      end;
-//  end;
+  end;
 end;
 
 
@@ -793,12 +800,15 @@ procedure TRenderTerrain.DoOverlays(aFOW: TKMFogOfWarCommon);
 var
   I, K: Integer;
 begin
+  gPerfLogs.SectionEnter(psFrameOverlays);
   if gGame.IsMapEditor and not (mlOverlays in gGame.MapEditor.VisibleLayers) then
     Exit;
 
   for I := fClipRect.Top to fClipRect.Bottom do
     for K := fClipRect.Left to fClipRect.Right do
       RenderTileOverlay(aFOW, K, I);
+
+  gPerfLogs.SectionLeave(psFrameOverlays);
 end;
 
 
@@ -813,8 +823,8 @@ begin
     for I := fClipRect.Top to fClipRect.Bottom do
       for K := fClipRect.Left to fClipRect.Right do
       begin
-//        if TileHasToBeRendered(False,K,I,aFow) then
-//        begin
+        if TileHasToBeRendered(False,K,I,aFow) then
+        begin
           if Land[I,K].FenceSide and 1 = 1 then
             RenderFence(Land[I,K].Fence, dirN, K, I);
           if Land[I,K].FenceSide and 2 = 2 then 
@@ -823,7 +833,7 @@ begin
             RenderFence(Land[I,K].Fence, dirW, K, I);
           if Land[I,K].FenceSide and 8 = 8 then 
             RenderFence(Land[I,K].Fence, dirS, K, I);
-//        end;
+        end;
       end;
 end;
 
@@ -849,6 +859,7 @@ var
   SizeX, SizeY: Word;
   tX, tY: Word;
 begin
+  gPerfLogs.SectionEnter(psFrameLighting);
   glColor4f(1, 1, 1, 1);
   //Render highlights
   glBlendFunc(GL_DST_COLOR, GL_ONE);
@@ -881,8 +892,8 @@ begin
         begin
           tX := K + fClipRect.Left;
           tY := I + fClipRect.Top;
-//          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
-//          begin
+          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+          begin
             if RENDER_3D then
             begin
               glBegin(GL_TRIANGLE_FAN);
@@ -899,9 +910,10 @@ begin
                 glTexCoord1f(Land[  tY, tX+1].Light); glVertex3f(  tX, tY-1 - Land[  tY, tX+1].Height / CELL_HEIGHT_DIV, tY-1);
               glEnd;
             end;
-//          end;
+          end;
         end;
   end;
+  gPerfLogs.SectionLeave(psFrameLighting);
 end;
 
 
@@ -912,6 +924,7 @@ var
   SizeX, SizeY: Word;
   tX, tY: Word;
 begin
+  gPerfLogs.SectionEnter(psFrameShadows);
   glColor4f(1, 1, 1, 1);
   glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
   TRender.BindTexture(fTextG);
@@ -943,8 +956,8 @@ begin
         begin
           tX := K + fClipRect.Left;
           tY := I + fClipRect.Top;
-//          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
-//          begin
+          if TileHasToBeRendered(I*K = 0,tX,tY,aFow) then // Do not render tiles fully covered by FOW
+          begin
             if RENDER_3D then
             begin
               glBegin(GL_TRIANGLE_FAN);
@@ -961,12 +974,14 @@ begin
                 glTexCoord1f(-Land[  tY, tX+1].Light); glVertex3f(  tX, tY-1 - Land[  tY, tX+1].Height / CELL_HEIGHT_DIV, tY-1);
               glEnd;
             end;
-//          end;
+          end;
         end;
   end;
 
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   TRender.BindTexture(0);
+
+  gPerfLogs.SectionLeave(psFrameShadows);
 end;
 
 
@@ -976,6 +991,7 @@ var
   I,K: Integer;
   Fog: PKMByte2Array;
 begin
+  gPerfLogs.SectionEnter(psFrameFOW);
   if aFOW is TKMFogOfWarOpen then Exit;
 
   glColor4f(1, 1, 1, 1);
@@ -1090,6 +1106,7 @@ begin
 
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   TRender.BindTexture(0);
+  gPerfLogs.SectionLeave(psFrameFOW);
 end;
 
 
@@ -1146,6 +1163,8 @@ begin
 
   UpdateVBO(aAnimStep, aFOW);
 
+  gPerfLogs.SectionEnter(psFrameTerrainBase);
+
   if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoTiles);
   DoTiles(aFOW);
   if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoTiles);
@@ -1168,6 +1187,8 @@ begin
   if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psDoShadows);
   DoShadows(aFOW);
   if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psDoShadows);
+
+  gPerfLogs.SectionLeave(psFrameTerrainBase);
 end;
 
 

@@ -99,14 +99,14 @@ end;
 
 procedure TKMRenderQuery.QueriesBegin(aQueryId: Integer);
 begin
-  //glBeginQuery(GL_TIME_ELAPSED, fQueryID[fQueryBufferBack][0]);
+//  glBeginQuery(GL_TIME_ELAPSED, aQueryId); //fQueryID[aQueryId, fQueryBufferA]);//fQueryID[fQueryBufferBack][0]);
   glQueryCounter(fQueryID[aQueryId, fQueryBufferA].TimeStart, GL_TIMESTAMP);
 end;
 
 
 procedure TKMRenderQuery.QueriesEnd(aQueryId: Integer);
 begin
-  //glEndQuery(GL_TIME_ELAPSED);
+//  glEndQuery(GL_TIME_ELAPSED);
   glQueryCounter(fQueryID[aQueryId, fQueryBufferA].TimeEnd, GL_TIMESTAMP);
 end;
 
@@ -120,7 +120,11 @@ var
 begin
   glGetQueryObjectui64v(fQueryID[aQueryId, fQueryBufferB].TimeStart, GL_QUERY_RESULT, @t1);
   glGetQueryObjectui64v(fQueryID[aQueryId, fQueryBufferB].TimeEnd, GL_QUERY_RESULT, @t2);
-  Result := t2 - t1;
+
+  if t2 > t1 then
+    Result := t2 - t1
+  else
+    Result := 0; //Sometimes we can get overflow....
 end;
 
 

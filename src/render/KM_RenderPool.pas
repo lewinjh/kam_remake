@@ -152,7 +152,7 @@ uses
   KM_ResMapElements, KM_AIFields, KM_TerrainPainter, KM_GameCursor,
   KM_HouseBarracks, KM_HouseTownHall, KM_HouseWoodcutters,
   KM_FogOfWar, KM_Hand, KM_UnitGroup, KM_UnitWarrior, KM_CommonUtils,
-  KM_GameTypes, KM_Utils, KM_ResTileset, KM_PerfLog;
+  KM_GameTypes, KM_Utils, KM_ResTileset, KM_PerfLog, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 
 const
@@ -281,6 +281,7 @@ begin
 
     if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderTerBase);
     // Everything flat of terrain
+    gPerfLogs.SectionEnter(psFrameTerrain);
     fRenderTerrain.ClipRect := ClipRect;
     fRenderTerrain.RenderBase(gTerrain.AnimStep, gMySpectator.FogOfWar);
     if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderTerBase);
@@ -298,6 +299,7 @@ begin
     if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderPlans);
 
     if DO_PERF_LOGGING then gGame.PerfLog.LeaveSection(psRenderTer);
+    gPerfLogs.SectionLeave(psFrameTerrain);
 
     if DO_PERF_LOGGING then gGame.PerfLog.EnterSection(psRenderOther);
     RenderMapEdLayers(ClipRect);
@@ -2020,6 +2022,7 @@ procedure TRenderList.Render;
 var
   I, K, ObjectsCount: Integer;
 begin
+  gPerfLogs.SectionEnter(psFrameRenderList);
   fStat_Sprites := fCount;
   fStat_Sprites2 := 0;
   ObjectsCount := Length(RenderOrder);
@@ -2046,6 +2049,7 @@ begin
       until ((K = fCount) or RenderList[K].NewInst);
     glPopMatrix;
   end;
+  gPerfLogs.SectionLeave(psFrameRenderList);
 end;
 
 
