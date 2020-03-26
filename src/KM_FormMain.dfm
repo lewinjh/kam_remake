@@ -70,7 +70,6 @@ object FormMain: TFormMain
     Top = 0
     Width = 300
     Height = 765
-    VertScrollBar.Position = 42
     VertScrollBar.Tracking = True
     Align = alRight
     HeaderFont.Charset = DEFAULT_CHARSET
@@ -82,11 +81,12 @@ object FormMain: TFormMain
     HeaderStyle = hsThemed
     TabOrder = 1
     object cpLogs: TCategoryPanel
-      Top = 1027
+      Top = 829
       Height = 24
       Caption = 'Logs'
       Collapsed = True
       TabOrder = 0
+      ExplicitTop = 1069
       ExpandedHeight = 179
       object chkLogCommands: TCheckBox
         Left = 100
@@ -161,11 +161,12 @@ object FormMain: TFormMain
       end
     end
     object cpGraphicTweaks: TCategoryPanel
-      Top = 1003
+      Top = 805
       Height = 24
       Caption = 'Graphic tweaks'
       Collapsed = True
       TabOrder = 1
+      ExplicitTop = 1045
       ExpandedHeight = 124
       object Label1: TLabel
         Left = 101
@@ -263,11 +264,12 @@ object FormMain: TFormMain
       end
     end
     object cpUserInreface: TCategoryPanel
-      Top = 979
+      Top = 781
       Height = 24
       Caption = 'User Interface'
       Collapsed = True
       TabOrder = 2
+      ExplicitTop = 1021
       ExpandedHeight = 72
       object chkUIControlsBounds: TCheckBox
         Left = 8
@@ -298,11 +300,12 @@ object FormMain: TFormMain
       end
     end
     object cpAI: TCategoryPanel
-      Top = 955
+      Top = 757
       Height = 24
       Caption = 'AI'
       Collapsed = True
       TabOrder = 3
+      ExplicitTop = 997
       ExpandedHeight = 166
       object Label5: TLabel
         Left = 106
@@ -462,13 +465,13 @@ object FormMain: TFormMain
       end
     end
     object cpPerfLogs: TCategoryPanel
-      Top = 55
-      Height = 900
+      Top = 97
+      Height = 660
       Caption = 'Perf Logs'
       TabOrder = 4
     end
     object cpDebugRender: TCategoryPanel
-      Top = 31
+      Top = 73
       Height = 24
       Caption = 'Debug Render'
       Collapsed = True
@@ -633,7 +636,7 @@ object FormMain: TFormMain
       end
     end
     object cpGameAdv: TCategoryPanel
-      Top = 7
+      Top = 49
       Height = 24
       Caption = 'Game additional'
       Collapsed = True
@@ -682,7 +685,7 @@ object FormMain: TFormMain
       end
     end
     object cpGameControls: TCategoryPanel
-      Top = -42
+      Top = 0
       Height = 49
       Caption = 'Game '
       TabOrder = 7
