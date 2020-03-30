@@ -175,6 +175,7 @@ type
     function GetPacketsSent(aKind: TKMessageKind): Cardinal;
 
     procedure WriteInfoToJoinRoom(aM: TKMemoryStream);
+    function GetMapInfo: TKMapInfo;
   public
     constructor Create(const aMasterServerAddress: string; aKickTimeout, aPingInterval, aAnnounceInterval, aServerUDPScanPort: Word;
                        aDynamicFOW, aMapsFilterEnabled: Boolean; const aMapsCRCListStr: UnicodeString; const aPeacetimeRng: TKMRangeInt;
@@ -246,7 +247,7 @@ type
     procedure AnnounceGameInfo(aGameTime: TDateTime; aMap: UnicodeString);
 
     //Gameplay
-    property MapInfo: TKMapInfo read fMapInfo;
+    property MapInfo: TKMapInfo read GetMapInfo;
     property SaveInfo: TKMSaveInfo read fSaveInfo;
     property NetGameOptions: TKMGameOptions read fNetGameOptions;
     property SelectGameKind: TKMNetGameKind read fSelectGameKind;
@@ -759,8 +760,9 @@ end;
 
 //Tell other players which start position we would like to use
 //Each players choice should be unique
-procedure TKMNetworking.SelectLoc(aIndex:integer; aPlayerIndex:integer);
-var NetPlayerIndex: Integer;
+procedure TKMNetworking.SelectLoc(aIndex: Integer; aPlayerIndex: Integer);
+var
+  NetPlayerIndex: Integer;
 begin
   //Check if position can be taken before doing anything
   if not CanTakeLocation(aPlayerIndex, aIndex, IsHost and fNetPlayers.HostDoesSetup) then
@@ -830,7 +832,7 @@ end;
 
 //Tell other players which color we will be using
 //For now players colors are not unique, many players may have one color
-procedure TKMNetworking.SelectColor(aIndex:integer; aPlayerIndex:integer);
+procedure TKMNetworking.SelectColor(aIndex: Integer; aPlayerIndex: Integer);
 begin
   if not fNetPlayers.ColorAvailable(aIndex) then Exit;
   if (fSelectGameKind = ngkSave)
@@ -2696,6 +2698,14 @@ begin
     end;
   end;
   PostLocalMessage(Format(gResTexts[TX_LOBBY_ALERT_GET_READY_SENT], [IntToStr(K)]), csSystem);
+end;
+
+
+function TKMNetworking.GetMapInfo: TKMapInfo;
+begin
+  if Self = nil then Exit(nil);
+
+  Result := fMapInfo;
 end;
 
 

@@ -9,13 +9,17 @@ const
   PING_COUNT = 20; //Number of pings to store and take the maximum over for latency calculation (pings are measured once per second)
 
 type
+  TKMPlayerColorKind = (pckRandom, pckList, pckCustom);
+
   //Multiplayer info that is filled in Lobby before TKMPlayers are created (thats why it has many mirror fields)
   TKMNetPlayerInfo = class
   private
     fNikname: AnsiString;
     fLangCode: AnsiString;
     fIndexOnServer: TKMNetHandleIndex;
+    fFlagColorKind: TKMPlayerColorKind;
     fFlagColorID: Integer;    //Flag color, 0 means random
+    fFlagColorCustom: Cardinal;
     fPings: array[0 .. PING_COUNT-1] of Word; //Ring buffer
     fPingPos: Byte;
     procedure SetLangCode(const aCode: AnsiString);
@@ -60,7 +64,7 @@ type
     property IndexOnServer: TKMNetHandleIndex read fIndexOnServer;
     property SetIndexOnServer: TKMNetHandleIndex write fIndexOnServer;
     function FlagColor(aDefault: Cardinal = $FF000000): Cardinal;
-    property FlagColorID: Integer read fFlagColorID write fFlagColorID;
+//    property FlagColorID: Integer read fFlagColorID write fFlagColorID;
     property HandIndex: Integer read GetHandIndex;
 
     procedure Save(SaveStream: TKMemoryStream);
@@ -165,10 +169,10 @@ end;
 
 function TKMNetPlayerInfo.FlagColor(aDefault: Cardinal = $FF000000): Cardinal;
 begin
-  if fFlagColorID <> 0 then
-    Result := MP_TEAM_COLORS[fFlagColorID]
+  if fFlagColorKind then
+    Result := aDefault //Black by default
   else
-    Result := aDefault; //Black by default
+    Result := fFlagColor;
 end;
 
 
@@ -288,10 +292,10 @@ end;
 
 function TKMNetPlayerInfo.GetNiknameColored: AnsiString;
 begin
-  if FlagColorID <> 0 then
-    Result := WrapColorA(Nikname, FlagColorToTextColor(FlagColor))
+  if fFlagColorKind then
+    Result := Nikname
   else
-    Result := Nikname;
+    Result := WrapColorA(Nikname, FlagColorToTextColor(FlagColor));
 end;
 
 
@@ -321,7 +325,9 @@ begin
   LoadStream.ReadA(fLangCode);
   LoadStream.Read(SmallInt(fIndexOnServer));
   LoadStream.Read(PlayerNetType, SizeOf(PlayerNetType));
+  LoadStream.Read(fFlagColorKind, SizeOf(fFlagColorKind));
   LoadStream.Read(fFlagColorID);
+  LoadStream.Read(fFlagColorCustom);
   LoadStream.Read(StartLocation);
   LoadStream.Read(Team);
   LoadStream.Read(ReadyToStart);
@@ -342,7 +348,9 @@ begin
   SaveStream.WriteA(fLangCode);
   SaveStream.Write(fIndexOnServer);
   SaveStream.Write(PlayerNetType, SizeOf(PlayerNetType));
+  SaveStream.Write(fFlagColorKind, SizeOf(fFlagColorKind));
   SaveStream.Write(fFlagColorID);
+  SaveStream.Write(fFlagColorCustom);
   SaveStream.Write(StartLocation);
   SaveStream.Write(Team);
   SaveStream.Write(ReadyToStart);
@@ -404,9 +412,9 @@ var
   AvailableColor: array [1..MP_COLOR_COUNT] of Byte;
 begin
   //All wrong colors will be reset to random
-  for I := 1 to fCount do
-    if not Math.InRange(fNetPlayers[I].FlagColorID, 0, MP_COLOR_COUNT) then
-      fNetPlayers[I].FlagColorID := 0;
+//  for I := 1 to fCount do
+//    if not Math.InRange(fNetPlayers[I].FlagColorID, 0, MP_COLOR_COUNT) then
+//      fNetPlayers[I].FlagColorID := 0;
 
   FillChar(UsedColor, SizeOf(UsedColor), #0);
 

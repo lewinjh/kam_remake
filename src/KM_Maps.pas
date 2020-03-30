@@ -43,6 +43,7 @@ type
     DifficultyLevels: TKMMissionDifficultySet;
 
     BlockTeamSelection: Boolean;
+    BlockColorSelection: Boolean;
     BlockPeacetime: Boolean;
     BlockFullMapPreview: Boolean;
 
@@ -94,6 +95,7 @@ type
     function GetCanBeHumanAndAICount: Byte;
     function GetBigDesc: UnicodeString;
     procedure SetBigDesc(const aBigDesc: UnicodeString);
+    function GetTxtInfo: TKMMapTxtInfo;
   public
     MapSizeX, MapSizeY: Integer;
     MissionMode: TKMissionMode;
@@ -115,7 +117,7 @@ type
     procedure AddGoal(aType: TKMGoalType; aPlayer: TKMHandID; aCondition: TKMGoalCondition; aStatus: TKMGoalStatus; aPlayerIndex: TKMHandID);
     procedure LoadExtra;
 
-    property TxtInfo: TKMMapTxtInfo read fTxtInfo;
+    property TxtInfo: TKMMapTxtInfo read GetTxtInfo;
     property BigDesc: UnicodeString read GetBigDesc write SetBigDesc;
     property InfoAmount: TKMMapInfoAmount read fInfoAmount;
     property Path: string read fPath;
@@ -487,6 +489,14 @@ begin
   if fSizeText = '' then
     fSizeText := MapSizeText(MapSizeX, MapSizeY);
   Result := fSizeText;
+end;
+
+
+function TKMapInfo.GetTxtInfo: TKMMapTxtInfo;
+begin
+  if Self = nil then Exit(nil);
+
+  Result := fTxtInfo;
 end;
 
 
@@ -937,6 +947,9 @@ begin
   if BlockTeamSelection then
     WriteLine('BlockTeamSelection');
 
+  if BlockColorSelection then
+    WriteLine('BlockColorSelection');
+
   if BlockFullMapPreview then
     WriteLine('BlockFullMapPreview');
 
@@ -1010,8 +1023,9 @@ begin
       if SameText(St, 'SetCoop')   then
       begin
         IsCoop := True;
-        BlockPeacetime := True;
         BlockTeamSelection := True;
+        BlockColorSelection := True;
+        BlockPeacetime := True;
         BlockFullMapPreview := True;
       end;
 
@@ -1021,10 +1035,12 @@ begin
         IsRMG := True;
       if SameText(St, 'PlayableAsSP') then
         IsPlayableAsSP := True;
-      if SameText(St, 'BlockPeacetime') then
-        BlockPeacetime := True;
       if SameText(St, 'BlockTeamSelection') then
         BlockTeamSelection := True;
+      if SameText(St, 'BlockColorSelection') then
+        BlockColorSelection := True;
+      if SameText(St, 'BlockPeacetime') then
+        BlockPeacetime := True;
       if SameText(St, 'BlockFullMapPreview') then
         BlockFullMapPreview := True;
 
@@ -1073,7 +1089,7 @@ end;
 function TKMMapTxtInfo.IsEmpty: Boolean;
 begin
   Result := not (IsCoop or IsSpecial or IsPlayableAsSP or IsRMG
-            or BlockTeamSelection or BlockPeacetime or BlockFullMapPreview
+            or BlockTeamSelection or BlockColorSelection or BlockPeacetime or BlockFullMapPreview
             or (Author <> '')
             or (SmallDesc <> '') or IsSmallDescLibxSet
             or (BigDesc <> '') or IsBigDescLibxSet
@@ -1099,6 +1115,7 @@ begin
   IsRMG := False;
   IsPlayableAsSP := False;
   BlockTeamSelection := False;
+  BlockColorSelection := False;
   BlockPeacetime := False;
   BlockFullMapPreview := False;
   DifficultyLevels := [];
@@ -1118,6 +1135,7 @@ begin
   LoadStream.Read(IsPlayableAsSP);
 
   LoadStream.Read(BlockTeamSelection);
+  LoadStream.Read(BlockColorSelection);
   LoadStream.Read(BlockPeacetime);
   LoadStream.Read(BlockFullMapPreview);
 
@@ -1135,6 +1153,7 @@ begin
   SaveStream.Write(IsPlayableAsSP);
 
   SaveStream.Write(BlockTeamSelection);
+  SaveStream.Write(BlockColorSelection);
   SaveStream.Write(BlockPeacetime);
   SaveStream.Write(BlockFullMapPreview);
 

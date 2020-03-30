@@ -131,6 +131,9 @@ type
     procedure ChatTextChanged(Sender: TObject);
     procedure SetChatHandlers;
     procedure UpdateChatControls;
+
+    procedure ResetDropColorRandom(aI: Integer);
+    procedure UpdateDropColor(I: Integer);
   protected
     Panel_Lobby: TKMPanel;
       Panel_Settings: TKMPanel;
@@ -998,6 +1001,13 @@ begin
 end;
 
 
+procedure TKMMenuLobby.ResetDropColorRandom(aI: Integer);
+begin
+  DropBox_Colors[aI][0].Cells[0].Color := $FFFFFFFF;
+  DropBox_Colors[aI][0].Cells[0].Pic.Id := 31;
+end;
+
+
 procedure TKMMenuLobby.EscKeyDown(Sender: TObject);
 begin
   if Button_SettingsCancel.IsClickable then
@@ -1037,6 +1047,7 @@ begin
   Label_ServerName.Caption := '';
   Image_PasswordLock.Hide;
 
+
   for I := 1 to MAX_LOBBY_SLOTS do
   begin
     Label_Player[I].Caption := '.';
@@ -1057,6 +1068,7 @@ begin
     DropBox_Colors[I].Disable;
     DropBox_Colors[I].ItemIndex := 0;
     DropBox_Colors[I].Visible := I <= MAX_LOBBY_PLAYERS; //Spectators hidden initially
+    ResetDropColorRandom(I);
     Image_Ready[I].TexID := 0;
     Label_Ping[I].Caption := '';
   end;
@@ -1422,6 +1434,29 @@ begin
 end;
 
 
+procedure TKMMenuLobby.UpdateDropColor(I: Integer);
+begin
+  if fNetworking.MapInfo.TxtInfo.BlockColorSelection
+    and (DropBox_Loc[I].GetSelectedTag <> LOC_SPECTATE) then
+  begin
+    if DropBox_Loc[I].GetSelectedTag = LOC_RANDOM then
+      ResetDropColorRandom(I)
+    else
+    begin
+      DropBox_Colors[I][0].Cells[0].Color := fNetworking.MapInfo.FlagColors[DropBox_Loc[I].GetSelectedTag];
+      DropBox_Colors[I][0].Cells[0].Pic.Id := 30;
+    end;
+    DropBox_Colors[I].ItemIndex := 0;
+    DropBox_Colors[I].Disable;
+  end
+  else
+  begin
+    ResetDropColorRandom(I);
+    DropBox_Colors[I].Enable;
+  end;
+end;
+
+
 //Try to change players setup, Networking will check if it can be done under current
 //conditions immediately and reverts the change without disturbing Host.
 //If the change is possible Networking will send query to the Host.
@@ -1474,6 +1509,8 @@ begin
         and not fNetworking.IsHost then //Changes are applied instantly for host
         //Set loc back to NetPlayers value until host processes our request
         DropBox_Loc[I].SelectByTag(fNetworking.NetPlayers[NetI].StartLocation);
+
+      UpdateDropColor(I);
     end;
 
     //Team
@@ -1750,7 +1787,8 @@ begin
       else
         DropBox_Team[I].ItemIndex := CurPlayer.Team;
 
-      DropBox_Colors[I].ItemIndex := CurPlayer.FlagColorID;
+      if (fNetworking.SelectGameKind <> ngkMap) or not fNetworking.MapInfo.TxtInfo.BlockColorSelection then
+        DropBox_Colors[I].ItemIndex := CurPlayer.FlagColorID;
 
       //Disable colors that are unavailable
       for K := 0 to DropBox_Colors[I].List.RowCount-1 do
@@ -1781,7 +1819,8 @@ begin
                                       and (fNetworking.SelectGameKind = ngkMap)
                                       and not fNetworking.MapInfo.TxtInfo.BlockTeamSelection;
       DropBox_Colors[I].Enabled := (CanEdit or (MyNik and not CurPlayer.ReadyToStart))
-                                        and (not IsSave or CurPlayer.IsSpectator);
+                                        and (not IsSave or CurPlayer.IsSpectator)
+                                        and ((fNetworking.SelectGameKind <> ngkMap) or not fNetworking.MapInfo.TxtInfo.BlockColorSelection);
       if MyNik and not fNetworking.IsHost then
       begin
         if CurPlayer.ReadyToStart then
@@ -1987,10 +2026,12 @@ begin
 
   if CanEdit then
   begin
-    fNetworking.SelectLoc(aValue+1, I);
+    fNetworking.SelectLoc(aValue + 1, I);
     //Host with HostDoesSetup could have given us some location we don't know about from a map/save we don't have
     if fNetworking.SelectGameKind <> ngkNone then
       DropBox_Loc[fNetPlayersToLocal[I]].SelectByTag(fNetworking.NetPlayers[I].StartLocation);
+
+    UpdateDropColor(fNetPlayersToLocal[I]);
   end;
 end;
 
