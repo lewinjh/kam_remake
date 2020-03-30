@@ -183,7 +183,8 @@ type
     procedure OrderHalt(aClearOffenders: Boolean; aForced: Boolean = True);
     procedure OrderLinkTo(aTargetGroup: TKMUnitGroup; aClearOffenders: Boolean);
     procedure OrderNone;
-    function OrderSplit(aClearOffenders: Boolean; aSplitSingle: Boolean = False): TKMUnitGroup;
+    function OrderSplit(aNewLeaderUnitType: TKMUnitType; aNewCnt: Integer; aMixed: Boolean): TKMUnitGroup; overload;
+    function OrderSplit(aSplitSingle: Boolean = False): TKMUnitGroup; overload;
     function OrderSplitUnit(aUnit: TKMUnit; aClearOffenders: Boolean): TKMUnitGroup;
     procedure OrderSplitLinkTo(aGroup: TKMUnitGroup; aCount: Word; aClearOffenders: Boolean);
     procedure OrderStorm(aClearOffenders: Boolean);
@@ -1515,9 +1516,62 @@ begin
 end;
 
 
+function TKMUnitGroup.OrderSplit(aNewLeaderUnitType: TKMUnitType; aNewCnt: Integer; aMixed: Boolean): TKMUnitGroup;
+var
+  I: Integer;
+  NewLeader: TKMUnitWarrior;
+begin
+  Result := nil;
+  if IsDead then Exit;
+  if Count < 2 then Exit;
+  if not InRange(aNewCnt, 1, Count - 1) then Exit;
+  if not (aNewLeaderUnitType in [WARRIOR_MIN..WARRIOR_MAX]) then Exit;
+
+  //If leader is storming don't allow splitting the group (makes it too easy to withdraw)
+  if Members[0].Action is TKMUnitActionStormAttack then Exit;
+
+  if CanTakeOrders then
+    ClearOffenders;
+
+  // Find new leader
+  NewLeader := nil;
+  // First try to find from all members except our leader
+  for I := Count - 1 downto 1 do
+  begin
+    if Members[I].UnitType = aNewLeaderUnitType then
+    begin
+      NewLeader := Members[I];
+      Break;
+    end;
+  end;
+  if (NewLeader = nil) and (Members[0].UnitType = aNewLeaderUnitType) then
+  begin
+    NewLeader := Members[0]
+  end;
+
+  //Remove from the group
+  NewLeader.ReleaseUnitPointer;
+  fMembers.Remove(NewLeader);
+
+  NewGroup := gHands[Owner].UnitGroups.AddGroup(NewLeader);
+  NewGroup.OnGroupDied := OnGroupDied;
+
+  for I := Count - 1 downto 0 do
+    if (MultipleTypes and (Members[I].UnitType = NewLeader.UnitType))
+       or (not MultipleTypes and (Count > NewGroup.Count + 1)) then
+    begin
+      U := Members[I];
+      gHands.CleanUpUnitPointer(U);
+      NewGroup.AddMember(Members[I], 1, False); // Join new group (insert next to commander)
+      fMembers.Delete(I); // Leave this group
+    end;
+
+end;
+
+
 //Split group in half
 //or split different unit types apart
-function TKMUnitGroup.OrderSplit(aClearOffenders: Boolean; aSplitSingle: Boolean = False): TKMUnitGroup;
+function TKMUnitGroup.OrderSplit(aSplitSingle: Boolean = False): TKMUnitGroup;
 var
   I: Integer;
   NewGroup: TKMUnitGroup;
@@ -1531,10 +1585,10 @@ begin
   //If leader is storming don't allow splitting the group (makes it too easy to withdraw)
   if Members[0].Action is TKMUnitActionStormAttack then Exit;
 
-  if gScriptEvents.FuncGroupAllowOrderSplit(Self) = brFalse then
-    Exit;
+//  gScriptEvents.ProcGroupBeforeOrderSplit(Self);
 
-  if aClearOffenders and CanTakeOrders then ClearOffenders;
+  if CanTakeOrders then
+    ClearOffenders;
 
   //If there are different unit types in the group, split should just split them first
   MultipleTypes := False;
@@ -1645,6 +1699,7 @@ begin
   NewGroup.fSelected := NewLeader;
   NewGroup.fTimeSinceHungryReminder := fTimeSinceHungryReminder;
   NewGroup.fOrderLoc := KMPointDir(NewLeader.CurrPosition, fOrderLoc.Dir);
+  NewGroup.UpdatePushbackLimit;
 
   //Set units per row
   UnitsPerRow := fUnitsPerRow;

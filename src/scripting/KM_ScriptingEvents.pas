@@ -79,7 +79,7 @@ type
     procedure ProcGroupHungry(aGroup: TKMUnitGroup);
     procedure ProcGroupOrderAttackHouse(aGroup: TKMUnitGroup; aHouse: TKMHouse);
     procedure ProcGroupOrderAttackUnit(aGroup: TKMUnitGroup; aUnit: TKMUnit);
-    function FuncGroupAllowOrderSplit(aGroup: TKMUnitGroup): TKMThreeResult;
+    procedure ProcGroupBeforeOrderSplit(aGroup: TKMUnitGroup; var aNewType: Integer; var aNewCnt: Integer; var aMixed: Boolean);
     procedure ProcGroupOrderMove(aGroup: TKMUnitGroup; aX, aY: Word);
     procedure ProcGroupOrderLink(aGroup1, aGroup2: TKMUnitGroup);
     procedure ProcGroupOrderSplit(aGroup, aNewGroup: TKMUnitGroup);
@@ -141,6 +141,8 @@ type
   TKMScriptEventProc3I = procedure (aIndex, aParam1, aParam2: Integer) of object;
   TKMScriptEventProc4I = procedure (aIndex, aParam1, aParam2, aParam3: Integer) of object;
   TKMScriptEventProc1S = procedure (aParam: Single) of object;
+
+  TKMScriptEventProc2VarIVarB = procedure (aIndex: Integer; var aParam1: Integer; var aParam2: Integer; var aParam3: Boolean) of object;
 
   TKMScriptEventFunc = function: Boolean of object;
   TKMScriptEventFunc1I = function (aIndex: Integer): Boolean of object;
@@ -207,7 +209,7 @@ begin
   AddEventHandlerName(evtGroupHungry,           'OnGroupHungry');
   AddEventHandlerName(evtGroupOrderAttackHouse, 'OnGroupOrderAttackHouse');
   AddEventHandlerName(evtGroupOrderAttackUnit,  'OnGroupOrderAttackUnit');
-  AddEventHandlerName(evtGroupAllowOrderSplit,  'OnGroupAllowOrderSplit');
+  AddEventHandlerName(evtGroupBeforeOrderSplit, 'OnGroupBeforeOrderSplit');
   AddEventHandlerName(evtGroupOrderMove,        'OnGroupOrderMove');
   AddEventHandlerName(evtGroupOrderLink,        'OnGroupOrderLink');
   AddEventHandlerName(evtGroupOrderSplit,       'OnGroupOrderSplit');
@@ -544,8 +546,9 @@ function TKMScriptEvents.CallEventFunc(const aFunc: TKMCustomEventHandler; const
 var
   Res: Boolean;
 begin
+  Result := brUnknown;
   if not MethodAssigned(aFunc.Handler) then Exit(brUnknown);
-
+  Res := False;
   try
     if aFloatParam <> FLOAT_PARAM_NONE then
     begin
@@ -609,7 +612,7 @@ end;
 
 class function TKMScriptEvents.GetIsProcedureByType(aEventType: TKMScriptEventType): Boolean;
 begin
-  Result := aEventType <> evtGroupAllowOrderSplit;
+  Result := aEventType <> evtGroupBeforeOrderSplit;
 end;
 
 
@@ -828,14 +831,23 @@ end;
 //* Event with return result (function)
 //* Occurs right before the group gets order to split, so you can get INITIAL group parameters and use them later. F.e. initial group formation.
 //* aGroup: group ID, which got split order
-//* Result: True - group will be splitted, False - group split will be blocked
-function TKMScriptEvents.FuncGroupAllowOrderSplit(aGroup: TKMUnitGroup): TKMThreeResult;
+//* aNewType: new group leader unit type
+//* aNewCnt: new group members count
+//* aMixed: is new group can have the only unit type or a could have any unit type from original group
+procedure TKMScriptEvents.ProcGroupBeforeOrderSplit(aGroup: TKMUnitGroup; var aNewType: Integer; var aNewCnt: Integer; var aMixed: Boolean);
+var
+  I: Integer;
 begin
-  Result := brUnknown;
-  if MethodAssigned(evtGroupAllowOrderSplit) then
-  begin
-    fIDCache.CacheGroup(aGroup, aGroup.UID);       //Improves cache efficiency since aGroup will probably be accessed soon
-    Result := CallEventHandlers(evtGroupAllowOrderSplit, [aGroup.UID]);
+  gPerfLogs.SectionEnter(psScripting, gGame.GameTick);
+  try
+    if MethodAssigned(evtGroupBeforeOrderSplit) then
+    begin
+      fIDCache.CacheGroup(aGroup, aGroup.UID); //Improves cache efficiency since aGroup will probably be accessed soon
+      for I := Low(fEventHandlers[evtGroupBeforeOrderSplit]) to High(fEventHandlers[evtGroupBeforeOrderSplit]) do
+        TKMScriptEventProc2VarIVarB(fEventHandlers[evtGroupBeforeOrderSplit][I].Handler)(aGroup.UID, aNewType, aNewCnt, aMixed);
+    end;
+  finally
+    gPerfLogs.SectionLeave(psScripting);
   end;
 end;
 
