@@ -782,7 +782,7 @@ begin
               with fNetworking.NetPlayers[NetI] do
               begin
                 gGameApp.Chat.WhisperRecipient := IndexOnServer;
-                UpdateButtonCaption(NiknameU, IfThen(FlagColorID <> 0, FlagColorToTextColor(FlagColor), 0));
+                UpdateButtonCaption(NiknameU, IfThen(FlagColorKind <> pckRandom, FlagColorToTextColor(FlagColor), 0));
               end;
             end;
           end;
@@ -1730,7 +1730,7 @@ begin
       else
       begin
         Label_Player[I].Caption := CurPlayer.SlotName;
-        if CurPlayer.FlagColorID = 0 then
+        if CurPlayer.FlagColorKind = pckRandom then
           Label_Player[I].FontColor := $FFFFFFFF
         else
           Label_Player[I].FontColor := FlagColorToTextColor(CurPlayer.FlagColor);

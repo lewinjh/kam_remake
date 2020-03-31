@@ -2,7 +2,7 @@ unit KM_GameInfo;
 {$I KaM_Remake.inc}
 interface
 uses
-  KM_Hand, KM_CommonClasses, KM_MapTypes, KM_Defaults;
+  KM_Hand, KM_CommonClasses, KM_CommonTypes, KM_MapTypes, KM_Defaults;
 
 
 type
@@ -37,6 +37,8 @@ type
     OwnerNikname: array [0..MAX_HANDS-1] of AnsiString; //Nikname of the player who plays this location
     HandTypes: array [0..MAX_HANDS-1] of TKMHandType;
     ColorID: array [0..MAX_HANDS-1] of Integer;
+    Color: array [0..MAX_HANDS-1] of Cardinal;
+    ColorKind: array [0..MAX_HANDS-1] of TKMPlayerColorKind;
     Team: array [0..MAX_HANDS-1] of Integer;
 
     //To be used in Savegames
@@ -111,6 +113,7 @@ procedure TKMGameInfo.Load(LoadStream: TKMemoryStream);
       LoadStream.ReadA(OwnerNikname[I]);
       LoadStream.Read(HandTypes[I], SizeOf(HandTypes[I]));
       LoadStream.Read(ColorID[I]);
+      LoadStream.Read(Color[I]);
       LoadStream.Read(Team[I]);
     end;
   end;
@@ -175,6 +178,7 @@ begin
     SaveStream.WriteA(OwnerNikname[I]);
     SaveStream.Write(HandTypes[I], SizeOf(HandTypes[I]));
     SaveStream.Write(ColorID[I]);
+    SaveStream.Write(Color[I]);
     SaveStream.Write(Team[I]);
   end;
 end;

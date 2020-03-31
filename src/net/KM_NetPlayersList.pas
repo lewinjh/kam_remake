@@ -9,8 +9,6 @@ const
   PING_COUNT = 20; //Number of pings to store and take the maximum over for latency calculation (pings are measured once per second)
 
 type
-  TKMPlayerColorKind = (pckRandom, pckList, pckCustom);
-
   //Multiplayer info that is filled in Lobby before TKMPlayers are created (thats why it has many mirror fields)
   TKMNetPlayerInfo = class
   private
@@ -28,6 +26,8 @@ type
     function GetNiknameColoredU: UnicodeString;
     function GetNiknameU: UnicodeString;
     function GetHandIndex: Integer;
+    function GetFlagColor: Cardinal;
+    procedure SetFlagColor(const Value: Cardinal);
   public
     PlayerNetType: TKMNetPlayerType; //Human, Computer, Closed
     StartLocation: Integer;  //Start location, 0 means random, -1 means spectate
@@ -63,8 +63,9 @@ type
     property LangCode: AnsiString read fLangCode write SetLangCode;
     property IndexOnServer: TKMNetHandleIndex read fIndexOnServer;
     property SetIndexOnServer: TKMNetHandleIndex write fIndexOnServer;
-    function FlagColor(aDefault: Cardinal = $FF000000): Cardinal;
-//    property FlagColorID: Integer read fFlagColorID write fFlagColorID;
+    property FlagColor: Cardinal read GetFlagColor write SetFlagColor;
+    property FlagColorID: Integer read fFlagColorID write fFlagColorID;
+    property FlagColorKind: TKMPlayerColorKind read fFlagColorKind write fFlagColorKind;
     property HandIndex: Integer read GetHandIndex;
 
     procedure Save(SaveStream: TKMemoryStream);
@@ -167,12 +168,25 @@ begin
 end;
 
 
-function TKMNetPlayerInfo.FlagColor(aDefault: Cardinal = $FF000000): Cardinal;
+function TKMNetPlayerInfo.GetFlagColor: Cardinal;
+const
+  DEFAULT = $FFFFFFFF;
 begin
-  if fFlagColorKind then
-    Result := aDefault //Black by default
-  else
-    Result := fFlagColor;
+  Result := DEFAULT;
+  case fFlagColorKind of
+    pckRandom:  Result := DEFAULT;
+    pckList:    if fFlagColorID <> 0 then
+                  Result := MP_TEAM_COLORS[fFlagColorID]
+                else
+                  Result := DEFAULT;
+    pckCustom:  Result := fFlagColorCustom;
+  end;
+end;
+
+
+procedure TKMNetPlayerInfo.SetFlagColor(const Value: Cardinal);
+begin
+  fFlagColorCustom := Value;
 end;
 
 
@@ -292,10 +306,10 @@ end;
 
 function TKMNetPlayerInfo.GetNiknameColored: AnsiString;
 begin
-  if fFlagColorKind then
-    Result := Nikname
+  if fFlagColorID <> 0 then
+    Result := WrapColorA(Nikname, FlagColorToTextColor(FlagColor))
   else
-    Result := WrapColorA(Nikname, FlagColorToTextColor(FlagColor));
+    Result := Nikname;
 end;
 
 
@@ -412,18 +426,28 @@ var
   AvailableColor: array [1..MP_COLOR_COUNT] of Byte;
 begin
   //All wrong colors will be reset to random
-//  for I := 1 to fCount do
-//    if not Math.InRange(fNetPlayers[I].FlagColorID, 0, MP_COLOR_COUNT) then
-//      fNetPlayers[I].FlagColorID := 0;
+  for I := 1 to fCount do
+    if not (fNetPlayers[I].FlagColorKind in [pckCustom, pckFixed]) and
+      not Math.InRange(fNetPlayers[I].FlagColorID, 0, MP_COLOR_COUNT) then
+    begin
+      fNetPlayers[I].FlagColorID := 0;
+      fNetPlayers[I].FlagColorKind := pckRandom;
+    end;
 
   FillChar(UsedColor, SizeOf(UsedColor), #0);
 
   //Remember all used colors and drop duplicates
   for I := 1 to fCount do
-    if UsedColor[fNetPlayers[I].FlagColorID] then
-      fNetPlayers[I].FlagColorID := 0
-    else
-      UsedColor[fNetPlayers[I].FlagColorID] := true;
+    if not (fNetPlayers[I].FlagColorKind in [pckCustom, pckFixed]) then
+    begin
+      if UsedColor[fNetPlayers[I].FlagColorID] then
+      begin
+        fNetPlayers[I].FlagColorID := 0;
+        fNetPlayers[I].FlagColorKind := pckRandom;
+      end else begin
+        UsedColor[fNetPlayers[I].FlagColorID] := true;
+      end;
+    end;
 
   //Collect available colors
   ColorCount := 0;
@@ -441,16 +465,21 @@ begin
   //Allocate available colors
   K := 0;
   for I := 1 to fCount do
-    if fNetPlayers[I].FlagColorID = 0 then
+    if not (fNetPlayers[I].FlagColorKind in [pckCustom, pckFixed]) then
     begin
-      Inc(K);
-      if K <= ColorCount then
-        fNetPlayers[I].FlagColorID := AvailableColor[K];
+      if fNetPlayers[I].FlagColorID = 0 then
+      begin
+        Inc(K);
+        if K <= ColorCount then
+          fNetPlayers[I].FlagColorID := AvailableColor[K];
+      end;
+    end else begin
+//      fNetPlayers[I].FlagColor
     end;
 
   //Check for odd players
   for I := 1 to fCount do
-    Assert(fNetPlayers[I].FlagColorID <> 0, 'Everyone should have a color now!');
+    Assert((fNetPlayers[I].FlagColorID <> 0) or (fNetPlayers[I].FlagColorKind in [pckCustom, pckFixed]), 'Everyone should have a color now!');
 end;
 
 
@@ -533,6 +562,7 @@ begin
   fNetPlayers[aSlot].fIndexOnServer := -1;
   fNetPlayers[aSlot].PlayerNetType := nptClosed;
   fNetPlayers[aSlot].Team := 0;
+  fNetPlayers[aSlot].FlagColor := 0;
   fNetPlayers[aSlot].FlagColorID := 0;
   fNetPlayers[aSlot].StartLocation := 0;
   fNetPlayers[aSlot].ReadyToStart := True;

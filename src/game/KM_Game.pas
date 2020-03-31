@@ -1792,6 +1792,8 @@ begin
           GameInfo.OwnerNikname[I] := fNetworking.NetPlayers[netIndex].Nikname;
           GameInfo.HandTypes[I] := fNetworking.NetPlayers[netIndex].GetPlayerType;
           GameInfo.ColorID[I] := fNetworking.NetPlayers[netIndex].FlagColorID;
+          GameInfo.Color[I] := fNetworking.NetPlayers[netIndex].FlagColor;
+          GameInfo.ColorKind[I] := fNetworking.NetPlayers[netIndex].FlagColorKind;
           GameInfo.Team[I] := fNetworking.NetPlayers[netIndex].Team;
         end
         else
@@ -1801,6 +1803,7 @@ begin
           GameInfo.OwnerNikname[I] := gHands[I].OwnerNikname; //MP nikname, not translated OwnerName
           GameInfo.HandTypes[I] := gHands[I].HandType;
           GameInfo.ColorID[I] := FindMPColor(gHands[I].FlagColor);
+          GameInfo.Color[I] := gHands[I].FlagColor;
           GameInfo.Team[I] := 0;
         end;
       end;

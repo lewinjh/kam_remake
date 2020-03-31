@@ -1086,6 +1086,7 @@ begin
       if (NetPlayers[I].StartLocation <> LOC_RANDOM) and (NetPlayers[I].StartLocation <> LOC_SPECTATE) then
       begin
         NetPlayers[I].FlagColorID := fSaveInfo.GameInfo.ColorID[NetPlayers[I].HandIndex];
+        NetPlayers[I].FlagColor := fSaveInfo.GameInfo.Color[NetPlayers[I].HandIndex];
         NetPlayers[I].Team := fSaveInfo.GameInfo.Team[NetPlayers[I].HandIndex];
       end
       else
@@ -2596,7 +2597,7 @@ begin
     for I := 1 to NetPlayers.Count do
     begin
       MPGameInfo.Players[I].Name        := NetPlayers[I].Nikname;
-      MPGameInfo.Players[I].Color       := NetPlayers[I].FlagColor($FFFFFFFF);
+      MPGameInfo.Players[I].Color       := NetPlayers[I].FlagColor;
       MPGameInfo.Players[I].Connected   := NetPlayers[I].Connected;
       MPGameInfo.Players[I].LangCode    := NetPlayers[I].LangCode;
       MPGameInfo.Players[I].Team        := NetPlayers[I].Team;

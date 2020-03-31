@@ -101,6 +101,8 @@ type
 
   TKMPlayerColorMode = (pcmNone, pcmDefault, pcmAllyEnemy, pcmTeams);
 
+  TKMPlayerColorKind = (pckRandom, pckList, pckCustom);
+
   TKMGameRevision = Word; //Word looks enought for now...
 
   TKMColor3f = record
