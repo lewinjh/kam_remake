@@ -782,7 +782,7 @@ begin
               with fNetworking.NetPlayers[NetI] do
               begin
                 gGameApp.Chat.WhisperRecipient := IndexOnServer;
-                UpdateButtonCaption(NiknameU, IfThen(FlagColorKind <> pckRandom, FlagColorToTextColor(FlagColor), 0));
+                UpdateButtonCaption(NiknameU, IfThen(IsColorSet, FlagColorToTextColor(FlagColor), 0));
               end;
             end;
           end;
@@ -1435,25 +1435,29 @@ end;
 
 
 procedure TKMMenuLobby.UpdateDropColor(I: Integer);
+var
+  ID: Integer;
+  Color: Cardinal;
 begin
-  if fNetworking.MapInfo.TxtInfo.BlockColorSelection
-    and (DropBox_Loc[I].GetSelectedTag <> LOC_SPECTATE) then
+  if not fNetworking.MapInfo.TxtInfo.BlockColorSelection then Exit;
+
+  if (DropBox_Loc[I].GetSelectedTag <> LOC_SPECTATE) then
   begin
     if DropBox_Loc[I].GetSelectedTag = LOC_RANDOM then
       ResetDropColorRandom(I)
     else
     begin
-      DropBox_Colors[I][0].Cells[0].Color := fNetworking.MapInfo.FlagColors[DropBox_Loc[I].GetSelectedTag];
+      ID := fLocalToNetPlayers[I];
+      Color := fNetworking.MapInfo.FlagColors[DropBox_Loc[I].GetSelectedTag - 1];
+      DropBox_Colors[I][0].Cells[0].Color := Color;
       DropBox_Colors[I][0].Cells[0].Pic.Id := 30;
+      fNetworking.NetPlayers[ID].FlagColor := Color;
     end;
     DropBox_Colors[I].ItemIndex := 0;
     DropBox_Colors[I].Disable;
   end
   else
-  begin
     ResetDropColorRandom(I);
-    DropBox_Colors[I].Enable;
-  end;
 end;
 
 
@@ -1464,6 +1468,7 @@ end;
 procedure TKMMenuLobby.PlayersSetupChange(Sender: TObject);
 var
   I, NetI: Integer;
+  Col: Cardinal;
 begin
   //Host control toggle
   if Sender = CheckBox_HostControl then
@@ -1501,7 +1506,7 @@ begin
       // We can still have cmSpectate chat mode if we were in specs. Reset to cmAll in this case
       if (DropBox_Loc[I].GetSelectedTag <> LOC_SPECTATE) and (gGameApp.Chat.Mode = cmSpectators) then
         ChatMenuSelect(CHAT_MENU_ALL);
-      
+
       fNetworking.SelectLoc(DropBox_Loc[I].GetSelectedTag, NetI);
       //Host with HostDoesSetup could have given us some location we don't know about
       //from a map/save we don't have, so make sure SelectGameKind is valid
@@ -1509,8 +1514,6 @@ begin
         and not fNetworking.IsHost then //Changes are applied instantly for host
         //Set loc back to NetPlayers value until host processes our request
         DropBox_Loc[I].SelectByTag(fNetworking.NetPlayers[NetI].StartLocation);
-
-      UpdateDropColor(I);
     end;
 
     //Team
@@ -1520,8 +1523,12 @@ begin
     //Color
     if (Sender = DropBox_Colors[I]) and DropBox_Colors[I].Enabled then
     begin
-      fNetworking.SelectColor(DropBox_Colors[I].ItemIndex, NetI);
-      DropBox_Colors[I].ItemIndex := fNetworking.NetPlayers[NetI].FlagColorID;
+      if DropBox_Colors[I].ItemIndex = 0 then
+        Col := 0
+      else
+        Col := DropBox_Colors[I][DropBox_Colors[I].ItemIndex].Cells[0].Color;
+
+      fNetworking.SelectColor(Col, NetI);
     end;
 
     if Sender = DropBox_PlayerSlot[I] then
@@ -1620,7 +1627,7 @@ procedure TKMMenuLobby.Lobby_OnPlayersSetup(Sender: TObject);
   end;
 
 var
-  I,K,ID,LocaleID: Integer;
+  I,K,ID,LocaleID,ColorID: Integer;
   MyNik, CanEdit, HostCanEdit, IsSave, IsValid: Boolean;
   CurPlayer: TKMNetPlayerInfo;
   FirstUnused: Boolean;
@@ -1730,10 +1737,11 @@ begin
       else
       begin
         Label_Player[I].Caption := CurPlayer.SlotName;
-        if CurPlayer.FlagColorKind = pckRandom then
-          Label_Player[I].FontColor := $FFFFFFFF
+        if CurPlayer.IsColorSet then
+          Label_Player[I].FontColor := FlagColorToTextColor(CurPlayer.FlagColor)
         else
-          Label_Player[I].FontColor := FlagColorToTextColor(CurPlayer.FlagColor);
+          Label_Player[I].FontColor := $FFFFFFFF;
+
         Label_Player[I].Show;
         PercentBar_PlayerDl_ChVisibility(I, False);
         DropBox_PlayerSlot[I].Disable;
@@ -1787,13 +1795,16 @@ begin
       else
         DropBox_Team[I].ItemIndex := CurPlayer.Team;
 
+      ColorID := FindMPColor(CurPlayer.FlagColor);
       if (fNetworking.SelectGameKind <> ngkMap) or not fNetworking.MapInfo.TxtInfo.BlockColorSelection then
-        DropBox_Colors[I].ItemIndex := CurPlayer.FlagColorID;
+        DropBox_Colors[I].ItemIndex := ColorID;
+
+      UpdateDropColor(I);
 
       //Disable colors that are unavailable
-      for K := 0 to DropBox_Colors[I].List.RowCount-1 do
-        if (K <> CurPlayer.FlagColorID) and (K <> 0)
-        and (not fNetworking.NetPlayers.ColorAvailable(K)
+      for K := 0 to DropBox_Colors[I].List.RowCount - 1 do
+        if (K <> ColorID) and (K <> 0)
+        and (not fNetworking.NetPlayers.ColorAvailable(MP_TEAM_COLORS[K])
              or ((fNetworking.SelectGameKind = ngkSave) and fNetworking.SaveInfo.GameInfo.ColorUsed(K))) then
           DropBox_Colors[I].List.Rows[K].Cells[0].Enabled := False
         else
@@ -2030,8 +2041,6 @@ begin
     //Host with HostDoesSetup could have given us some location we don't know about from a map/save we don't have
     if fNetworking.SelectGameKind <> ngkNone then
       DropBox_Loc[fNetPlayersToLocal[I]].SelectByTag(fNetworking.NetPlayers[I].StartLocation);
-
-    UpdateDropColor(fNetPlayersToLocal[I]);
   end;
 end;
 

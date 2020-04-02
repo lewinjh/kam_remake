@@ -36,9 +36,7 @@ type
     CanBeHuman: array [0..MAX_HANDS-1] of Boolean;
     OwnerNikname: array [0..MAX_HANDS-1] of AnsiString; //Nikname of the player who plays this location
     HandTypes: array [0..MAX_HANDS-1] of TKMHandType;
-    ColorID: array [0..MAX_HANDS-1] of Integer;
     Color: array [0..MAX_HANDS-1] of Cardinal;
-    ColorKind: array [0..MAX_HANDS-1] of TKMPlayerColorKind;
     Team: array [0..MAX_HANDS-1] of Integer;
 
     //To be used in Savegames
@@ -54,7 +52,7 @@ type
     function GetTimeText: UnicodeString;
     function GetTitleWithTime: UnicodeString;
     function GetSaveTimestamp: UnicodeString;
-    function ColorUsed(aColorID: Integer): Boolean;
+    function ColorUsed(aColor: Cardinal): Boolean;
 
     property VersionU: UnicodeString read GetVersionUnicode;
   end;
@@ -112,7 +110,6 @@ procedure TKMGameInfo.Load(LoadStream: TKMemoryStream);
       LoadStream.Read(Enabled[I]);
       LoadStream.ReadA(OwnerNikname[I]);
       LoadStream.Read(HandTypes[I], SizeOf(HandTypes[I]));
-      LoadStream.Read(ColorID[I]);
       LoadStream.Read(Color[I]);
       LoadStream.Read(Team[I]);
     end;
@@ -177,7 +174,6 @@ begin
     SaveStream.Write(Enabled[I]);
     SaveStream.WriteA(OwnerNikname[I]);
     SaveStream.Write(HandTypes[I], SizeOf(HandTypes[I]));
-    SaveStream.Write(ColorID[I]);
     SaveStream.Write(Color[I]);
     SaveStream.Write(Team[I]);
   end;
@@ -249,11 +245,12 @@ begin
 end;
 
 
-function TKMGameInfo.ColorUsed(aColorID: Integer): Boolean;
-var I: Integer;
+function TKMGameInfo.ColorUsed(aColor: Cardinal): Boolean;
+var
+  I: Integer;
 begin
   for I := 0 to MAX_HANDS - 1 do
-    if Enabled[I] and (ColorID[I] = aColorID) then
+    if Enabled[I] and (Color[I] = aColor) then
     begin
       Result := True;
       Exit;

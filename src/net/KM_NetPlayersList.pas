@@ -15,9 +15,7 @@ type
     fNikname: AnsiString;
     fLangCode: AnsiString;
     fIndexOnServer: TKMNetHandleIndex;
-    fFlagColorKind: TKMPlayerColorKind;
-    fFlagColorID: Integer;    //Flag color, 0 means random
-    fFlagColorCustom: Cardinal;
+    fFlagColorCustom: Cardinal; //Flag color
     fPings: array[0 .. PING_COUNT-1] of Word; //Ring buffer
     fPingPos: Byte;
     procedure SetLangCode(const aCode: AnsiString);
@@ -64,8 +62,7 @@ type
     property IndexOnServer: TKMNetHandleIndex read fIndexOnServer;
     property SetIndexOnServer: TKMNetHandleIndex write fIndexOnServer;
     property FlagColor: Cardinal read GetFlagColor write SetFlagColor;
-    property FlagColorID: Integer read fFlagColorID write fFlagColorID;
-    property FlagColorKind: TKMPlayerColorKind read fFlagColorKind write fFlagColorKind;
+    function IsColorSet: Boolean;
     property HandIndex: Integer read GetHandIndex;
 
     procedure Save(SaveStream: TKMemoryStream);
@@ -80,7 +77,7 @@ type
     fCount: Integer;
     fNetPlayers: array [1..MAX_LOBBY_SLOTS] of TKMNetPlayerInfo;
     function GetPlayer(aIndex: Integer): TKMNetPlayerInfo;
-    procedure ValidateColors;
+    procedure ValidateColors(aFixedLocsColors: TKMCardinalArray);
     procedure RemAllClosedPlayers;
   public
     HostDoesSetup: Boolean; //Gives host absolute control over locations/teams (not colors)
@@ -112,7 +109,7 @@ type
     function CheckCanJoin(const aNik: AnsiString; aIndexOnServer: TKMNetHandleIndex): Integer;
     function CheckCanReconnect(aLocalIndex: Integer): Integer;
     function LocAvailable(aIndex: Integer): Boolean;
-    function ColorAvailable(aIndex: Integer): Boolean;
+    function ColorAvailable(aColor: Cardinal): Boolean;
     function AllReady: Boolean;
     function AllReadyToPlay: Boolean;
     function AllReadyToReturnToLobby: Boolean;
@@ -137,7 +134,8 @@ type
     procedure SetAIReady;
     procedure RemAllAIs;
     procedure RemDisconnectedPlayers;
-    function ValidateSetup(const aHumanUsableLocs, aAIUsableLocs, aAdvancedAIUsableLocs: TKMHandIDArray; out ErrorMsg: UnicodeString): Boolean;
+    function ValidateSetup(const aHumanUsableLocs, aAIUsableLocs, aAdvancedAIUsableLocs: TKMHandIDArray;
+                           aFixedLocsColors: TKMCardinalArray; out ErrorMsg: UnicodeString): Boolean;
 
     //Import/Export
     procedure SaveToStream(aStream: TKMemoryStream); //Gets all relevant information as text string
@@ -172,20 +170,16 @@ function TKMNetPlayerInfo.GetFlagColor: Cardinal;
 const
   DEFAULT = $FFFFFFFF;
 begin
-  Result := DEFAULT;
-  case fFlagColorKind of
-    pckRandom:  Result := DEFAULT;
-    pckList:    if fFlagColorID <> 0 then
-                  Result := MP_TEAM_COLORS[fFlagColorID]
-                else
-                  Result := DEFAULT;
-    pckCustom:  Result := fFlagColorCustom;
-  end;
+  if Self = nil then Exit(DEFAULT);
+
+  Result := fFlagColorCustom;
 end;
 
 
 procedure TKMNetPlayerInfo.SetFlagColor(const Value: Cardinal);
 begin
+  if Self = nil then Exit;
+
   fFlagColorCustom := Value;
 end;
 
@@ -239,6 +233,12 @@ end;
 function TKMNetPlayerInfo.IsHuman: Boolean;
 begin
   Result := PlayerNetType = nptHuman;
+end;
+
+
+function TKMNetPlayerInfo.IsColorSet: Boolean;
+begin
+  Result := fFlagColorCustom <> 0; // We suggest color is not set if its 0 (also means its transparent, not black)
 end;
 
 
@@ -306,7 +306,7 @@ end;
 
 function TKMNetPlayerInfo.GetNiknameColored: AnsiString;
 begin
-  if fFlagColorID <> 0 then
+  if IsColorSet then
     Result := WrapColorA(Nikname, FlagColorToTextColor(FlagColor))
   else
     Result := Nikname;
@@ -339,8 +339,6 @@ begin
   LoadStream.ReadA(fLangCode);
   LoadStream.Read(SmallInt(fIndexOnServer));
   LoadStream.Read(PlayerNetType, SizeOf(PlayerNetType));
-  LoadStream.Read(fFlagColorKind, SizeOf(fFlagColorKind));
-  LoadStream.Read(fFlagColorID);
   LoadStream.Read(fFlagColorCustom);
   LoadStream.Read(StartLocation);
   LoadStream.Read(Team);
@@ -362,8 +360,6 @@ begin
   SaveStream.WriteA(fLangCode);
   SaveStream.Write(fIndexOnServer);
   SaveStream.Write(PlayerNetType, SizeOf(PlayerNetType));
-  SaveStream.Write(fFlagColorKind, SizeOf(fFlagColorKind));
-  SaveStream.Write(fFlagColorID);
   SaveStream.Write(fFlagColorCustom);
   SaveStream.Write(StartLocation);
   SaveStream.Write(Team);
@@ -415,48 +411,76 @@ end;
 
 function TKMNetPlayersList.GetPlayer(aIndex: Integer): TKMNetPlayerInfo;
 begin
+  if (Self = nil) or not InRange(aIndex, 1, MAX_LOBBY_SLOTS) then Exit(nil);
+
   Result := fNetPlayers[aIndex];
 end;
 
 
-procedure TKMNetPlayersList.ValidateColors;
+procedure TKMNetPlayersList.ValidateColors(aFixedLocsColors: TKMCardinalArray);
+
 var
-  I,K,ColorCount: Integer;
+  ColorCount: Integer;
   UsedColor: array [0..MP_COLOR_COUNT] of Boolean; //0 means Random
   AvailableColor: array [1..MP_COLOR_COUNT] of Byte;
+
+  procedure CollectAvailColors(aColorDist: Single);
+  var
+    I: Integer;
+  begin
+    //Collect available colors
+    ColorCount := 0;
+    for I := 1 to MP_COLOR_COUNT do
+      if not UsedColor[I] and not IsColorCloseToColors(MP_TEAM_COLORS[I], aFixedLocsColors, aColorDist) then
+      begin
+        Inc(ColorCount);
+        AvailableColor[ColorCount] := I;
+      end;
+  end;
+
+var
+  I, K, ColorID: Integer;
+  FixedLocCol: Boolean;
+  ColorDist: Single;
 begin
+  FixedLocCol := Length(aFixedLocsColors) > 0;
+  if FixedLocCol then
+  begin
+    for I := 1 to fCount do
+      if not fNetPlayers[I].IsSpectator then
+        fNetPlayers[I].FlagColor := aFixedLocsColors[fNetPlayers[I].HandIndex]; // Start locs
+  end;
+
   //All wrong colors will be reset to random
   for I := 1 to fCount do
-    if not (fNetPlayers[I].FlagColorKind in [pckCustom, pckFixed]) and
-      not Math.InRange(fNetPlayers[I].FlagColorID, 0, MP_COLOR_COUNT) then
-    begin
-      fNetPlayers[I].FlagColorID := 0;
-      fNetPlayers[I].FlagColorKind := pckRandom;
-    end;
+    if (fNetPlayers[I].FlagColor shr 24) <> $FF then
+      fNetPlayers[I].FlagColor := 0;
 
   FillChar(UsedColor, SizeOf(UsedColor), #0);
 
   //Remember all used colors and drop duplicates
   for I := 1 to fCount do
-    if not (fNetPlayers[I].FlagColorKind in [pckCustom, pckFixed]) then
-    begin
-      if UsedColor[fNetPlayers[I].FlagColorID] then
-      begin
-        fNetPlayers[I].FlagColorID := 0;
-        fNetPlayers[I].FlagColorKind := pckRandom;
-      end else begin
-        UsedColor[fNetPlayers[I].FlagColorID] := true;
-      end;
-    end;
-
-  //Collect available colors
-  ColorCount := 0;
-  for I := 1 to MP_COLOR_COUNT do
-  if not UsedColor[I] then
   begin
-    Inc(ColorCount);
-    AvailableColor[ColorCount] := I;
+    // Ignore fixed colors for non-specs
+    if FixedLocCol and not fNetPlayers[I].IsSpectator then
+      Continue;
+
+    ColorID := FindMPColor(fNetPlayers[I].FlagColor);
+
+    if UsedColor[ColorID] then
+    begin
+      fNetPlayers[I].FlagColor := 0;
+    end else begin
+      UsedColor[ColorID] := True;
+    end;
   end;
+
+  // Try to find different colors by reduced color distance
+  ColorDist := 0.3;
+  repeat
+    CollectAvailColors(ColorDist);
+    ColorDist := ColorDist / 2;
+  until ColorCount > 0;
 
   //Randomize (don't use KaMRandom - we want varied results and PlayerList is synced to clients before start)
   for I := 1 to ColorCount do
@@ -465,21 +489,21 @@ begin
   //Allocate available colors
   K := 0;
   for I := 1 to fCount do
-    if not (fNetPlayers[I].FlagColorKind in [pckCustom, pckFixed]) then
+  begin
+    if FixedLocCol and not fNetPlayers[I].IsSpectator then
+      Continue;
+
+    if not fNetPlayers[I].IsColorSet then
     begin
-      if fNetPlayers[I].FlagColorID = 0 then
-      begin
-        Inc(K);
-        if K <= ColorCount then
-          fNetPlayers[I].FlagColorID := AvailableColor[K];
-      end;
-    end else begin
-//      fNetPlayers[I].FlagColor
+      Inc(K);
+      if K <= ColorCount then
+        fNetPlayers[I].FlagColor := MP_TEAM_COLORS[AvailableColor[K]];
     end;
+  end;
 
   //Check for odd players
   for I := 1 to fCount do
-    Assert((fNetPlayers[I].FlagColorID <> 0) or (fNetPlayers[I].FlagColorKind in [pckCustom, pckFixed]), 'Everyone should have a color now!');
+    Assert(fNetPlayers[I].IsColorSet, 'Everyone should have a color now!');
 end;
 
 
@@ -502,7 +526,7 @@ begin
   fNetPlayers[fCount].fIndexOnServer := aIndexOnServer;
   fNetPlayers[fCount].PlayerNetType := nptHuman;
   fNetPlayers[fCount].Team := 0;
-  fNetPlayers[fCount].FlagColorID := 0;
+  fNetPlayers[fCount].FlagColor := 0; // Transparent color
   fNetPlayers[fCount].ReadyToStart := False;
   fNetPlayers[fCount].HasMapOrSave := False;
   fNetPlayers[fCount].ReadyToPlay := False;
@@ -536,7 +560,7 @@ begin
   else
     fNetPlayers[aSlot].PlayerNetType := nptComputerClassic;
   fNetPlayers[aSlot].Team := 0;
-  fNetPlayers[aSlot].FlagColorID := 0;
+  fNetPlayers[aSlot].FlagColor := 0;
   fNetPlayers[aSlot].StartLocation := 0;
   fNetPlayers[aSlot].ReadyToStart := True;
   fNetPlayers[aSlot].HasMapOrSave := True;
@@ -563,7 +587,6 @@ begin
   fNetPlayers[aSlot].PlayerNetType := nptClosed;
   fNetPlayers[aSlot].Team := 0;
   fNetPlayers[aSlot].FlagColor := 0;
-  fNetPlayers[aSlot].FlagColorID := 0;
   fNetPlayers[aSlot].StartLocation := 0;
   fNetPlayers[aSlot].ReadyToStart := True;
   fNetPlayers[aSlot].HasMapOrSave := True;
@@ -729,15 +752,15 @@ begin
 end;
 
 
-function TKMNetPlayersList.ColorAvailable(aIndex: Integer): Boolean;
+function TKMNetPlayersList.ColorAvailable(aColor: Cardinal): Boolean;
 var
   I: Integer;
 begin
   Result := True;
-  if aIndex = 0 then Exit;
+  if (aColor shr 24) <> $FF then Exit; // Color with transparency
 
   for I := 1 to fCount do
-    Result := Result and (aIndex <> fNetPlayers[I].FlagColorID);
+    Result := Result and (aColor <> fNetPlayers[I].FlagColor);
 end;
 
 
@@ -1426,7 +1449,7 @@ end;
 //Convert undefined/random start locations to fixed and assign random colors
 //Remove odd players
 function TKMNetPlayersList.ValidateSetup(const aHumanUsableLocs, aAIUsableLocs, aAdvancedAIUsableLocs: TKMHandIDArray;
-                                         out ErrorMsg: UnicodeString): Boolean;
+                                         aFixedLocsColors: TKMCardinalArray; out ErrorMsg: UnicodeString): Boolean;
   function IsHumanLoc(aLoc: Byte): Boolean;
   var I: Integer;
   begin
@@ -1597,7 +1620,7 @@ begin
         end;
     end;
 
-  ValidateColors;
+  ValidateColors(aFixedLocsColors);
   Result := True;
 end;
 

@@ -29,9 +29,11 @@ type
 
   TKMMapTxtInfo = class
   private
+    fBlockColorSelection: Boolean;
     function IsEmpty: Boolean;
     procedure Load(LoadStream: TKMemoryStream);
     procedure Save(SaveStream: TKMemoryStream);
+    function GetBlockColorSelection: Boolean;
   public
     Author, BigDesc, SmallDesc: UnicodeString;
     SmallDescLibx, BigDescLibx: Integer;
@@ -43,7 +45,6 @@ type
     DifficultyLevels: TKMMissionDifficultySet;
 
     BlockTeamSelection: Boolean;
-    BlockColorSelection: Boolean;
     BlockPeacetime: Boolean;
     BlockFullMapPreview: Boolean;
 
@@ -59,6 +60,8 @@ type
     procedure SaveTXTInfo(const aFilePath: String);
     procedure LoadTXTInfo(const aFilePath: String);
     function HasDifficultyLevels: Boolean;
+
+    property BlockColorSelection: Boolean read GetBlockColorSelection write fBlockColorSelection;
   end;
 
 
@@ -127,6 +130,7 @@ type
     function HumanUsableLocs: TKMHandIDArray;
     function AIUsableLocs: TKMHandIDArray;
     function AdvancedAIUsableLocs: TKMHandIDArray;
+    function FixedLocsColors: TKMCardinalArray;
     property CRC: Cardinal read fCRC;
     property MapAndDatCRC : Cardinal read fMapAndDatCRC;
     function LocationName(aIndex: TKMHandID): string;
@@ -467,6 +471,20 @@ begin
       SetLength(Result, Length(Result)+1);
       Result[Length(Result)-1] := I;
     end;
+end;
+
+
+function TKMapInfo.FixedLocsColors: TKMCardinalArray;
+var
+  I: Integer;
+begin
+  SetLength(Result, 0);
+  if not TxtInfo.BlockColorSelection then Exit; // No need fixed color if we don't block color selection
+
+  SetLength(Result, MAX_HANDS);
+
+  for I := 0 to MAX_HANDS - 1 do
+    Result[I] := FlagColors[I];
 end;
 
 
@@ -1073,6 +1091,14 @@ begin
 end;
 
 
+function TKMMapTxtInfo.GetBlockColorSelection: Boolean;
+begin
+  if Self = nil then Exit(False);
+
+  Result := fBlockColorSelection;
+end;
+
+
 function TKMMapTxtInfo.IsSmallDescLibxSet: Boolean;
 begin
   Result := SmallDescLibx <> -1;
@@ -1135,7 +1161,7 @@ begin
   LoadStream.Read(IsPlayableAsSP);
 
   LoadStream.Read(BlockTeamSelection);
-  LoadStream.Read(BlockColorSelection);
+  LoadStream.Read(fBlockColorSelection);
   LoadStream.Read(BlockPeacetime);
   LoadStream.Read(BlockFullMapPreview);
 
@@ -1153,7 +1179,7 @@ begin
   SaveStream.Write(IsPlayableAsSP);
 
   SaveStream.Write(BlockTeamSelection);
-  SaveStream.Write(BlockColorSelection);
+  SaveStream.Write(fBlockColorSelection);
   SaveStream.Write(BlockPeacetime);
   SaveStream.Write(BlockFullMapPreview);
 
