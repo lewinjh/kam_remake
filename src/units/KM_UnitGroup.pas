@@ -236,6 +236,8 @@ type
     function GetGroupsMemberInRadius(aPoint: TKMPoint; aSqrRadius: Single; var aUGA: TKMUnitGroupArray; aTypes: TKMGroupTypeSet = [Low(TKMGroupType)..High(TKMGroupType)]): TKMUnitArray;
 
 
+    procedure Clear;
+
     function WarriorTrained(aUnit: TKMUnitWarrior): TKMUnitGroup;
 
     procedure Save(SaveStream: TKMemoryStream);
@@ -2213,6 +2215,12 @@ begin
   fGroups.Free;
 
   inherited;
+end;
+
+
+procedure TKMUnitGroups.Clear;
+begin
+  fGroups.Clear;
 end;
 
 

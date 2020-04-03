@@ -33,6 +33,7 @@ type
     function GetClosestUnit(const aPoint: TKMPoint; aTypes: TKMUnitTypeSet = [Low(TKMUnitType)..High(TKMUnitType)]): TKMUnit;
     procedure GetUnitsInRect(const aRect: TKMRect; List: TList);
     function GetTotalPointers: Integer;
+    procedure Clear;
     procedure Save(SaveStream: TKMemoryStream);
     procedure Load(LoadStream: TKMemoryStream);
     procedure SyncLoad;
@@ -62,7 +63,14 @@ destructor TKMUnitsCollection.Destroy;
 begin
   //No need to free units individually since they are Freed by TKMList.Clear command in destructor
   fUnits.Free;
+
   inherited;
+end;
+
+
+procedure TKMUnitsCollection.Clear;
+begin
+  fUnits.Clear;
 end;
 
 
