@@ -966,6 +966,7 @@ TX_KEY_FUNC_MAPEDIT_SUBMENU_ACTION_7 = 1135; //Sub-menu action 7
 TX_KEY_FUNC_MAPEDIT_OBJ_PALETTE = 1020; //Objects palette
 TX_KEY_FUNC_MAPEDIT_UNIV_ERASOR = 1021; //Universal eraser
 TX_KEY_FUNC_MAPEDIT_PAINT_BUCKET = 1136; //Paint bucket (change owner)
+TX_KEY_FUNC_MAPEDIT_HISTORY = 1408; //History
 TX_KEY_FUNC_UNKNOWN = 903; //~~~ Unknown value
 TX_KEY_UNASSIGNABLE = 902; //Ctrl and Shift are unassignable
 TX_KEY_LMB = 904; //Left Mouse Button

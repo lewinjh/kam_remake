@@ -115,7 +115,8 @@ type
     OnGroupDied: TKMUnitGroupEvent;
 
     constructor Create(aID: Cardinal; aCreator: TKMUnitWarrior); overload;
-    constructor Create(aID: Cardinal; aOwner: TKMHandID; aUnitType: TKMUnitType; PosX, PosY: Word; aDir: TKMDirection; aUnitPerRow, aCount: Word); overload;
+    constructor Create(aID: Cardinal; aOwner: TKMHandID; aUnitType: TKMUnitType; PosX, PosY: Word; aDir: TKMDirection;
+                       aUnitPerRow, aCount: Word); overload;
     constructor Create(LoadStream: TKMemoryStream); overload;
     procedure SyncLoad;
     procedure Save(SaveStream: TKMemoryStream);
@@ -219,7 +220,8 @@ type
     destructor Destroy; override;
 
     function AddGroup(aWarrior: TKMUnitWarrior): TKMUnitGroup; overload;
-    function AddGroup(aOwner: TKMHandID; aUnitType: TKMUnitType; PosX, PosY: Word; aDir: TKMDirection; aUnitPerRow, aCount: Word): TKMUnitGroup; overload;
+    function AddGroup(aOwner: TKMHandID; aUnitType: TKMUnitType; PosX, PosY: Word; aDir: TKMDirection;
+                      aUnitPerRow, aCount: Word): TKMUnitGroup; overload;
     procedure AddGroupToList(aGroup: TKMUnitGroup);
     procedure DeleteGroupFromList(aGroup: TKMUnitGroup);
     procedure RemGroup(aGroup: TKMUnitGroup);
@@ -254,7 +256,7 @@ uses
   KM_Game, KM_Hand, KM_HandsCollection, KM_Terrain, KM_CommonUtils, KM_ResTexts, KM_RenderPool,
   KM_Hungarian, KM_UnitActionWalkTo, KM_PerfLog, KM_AI, KM_ResUnits, KM_ScriptingEvents,
   KM_UnitActionStormAttack, KM_CommonClassesExt, KM_RenderAux,
-  KM_GameTypes, KM_Log, KM_DevPerfLog, KM_DevPerfLogTypes;
+  KM_GameTypes, KM_Log, KM_DevPerfLog, KM_DevPerfLogTypes, KM_MapEditorHistory;
 
 
 const
@@ -283,8 +285,8 @@ end;
 
 
 //Create a Group from script (creates all the warriors as well)
-constructor TKMUnitGroup.Create(aID: Cardinal; aOwner: TKMHandID; aUnitType: TKMUnitType;
-  PosX, PosY: Word; aDir: TKMDirection; aUnitPerRow, aCount: Word);
+constructor TKMUnitGroup.Create(aID: Cardinal; aOwner: TKMHandID; aUnitType: TKMUnitType; PosX, PosY: Word;
+                                aDir: TKMDirection; aUnitPerRow, aCount: Word);
 var
   Warrior: TKMUnitWarrior;
   I: Integer;
@@ -310,7 +312,7 @@ begin
   if gGame.IsMapEditor then
   begin
     //In MapEd we create only flagholder, other members are virtual
-    Warrior := TKMUnitWarrior(gHands[aOwner].AddUnit(aUnitType, KMPoint(PosX, PosY), False));
+    Warrior := TKMUnitWarrior(gHands[aOwner].AddUnit(aUnitType, KMPoint(PosX, PosY), False, 0, False, False));
     if Warrior <> nil then
     begin
       Warrior.Direction := aDir;
@@ -2243,8 +2245,8 @@ begin
 end;
 
 
-function TKMUnitGroups.AddGroup(aOwner: TKMHandID; aUnitType: TKMUnitType;
-  PosX, PosY: Word; aDir: TKMDirection; aUnitPerRow, aCount: Word): TKMUnitGroup;
+function TKMUnitGroups.AddGroup(aOwner: TKMHandID; aUnitType: TKMUnitType; PosX, PosY: Word; aDir: TKMDirection;
+                                aUnitPerRow, aCount: Word): TKMUnitGroup;
 begin
   Result := nil;
   Assert(aUnitType in [WARRIOR_MIN..WARRIOR_MAX]);
@@ -2254,8 +2256,11 @@ begin
   //If group failed to create (e.g. due to being placed on unwalkable position)
   //then its memberCount = 0
   if not Result.IsDead then
-    fGroups.Add(Result)
-  else
+  begin
+    fGroups.Add(Result);
+//    if gGame.IsMapEditor and aMakeCheckpoint then
+//      gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Add unit group');
+  end else
     FreeAndNil(Result);
 end;
 

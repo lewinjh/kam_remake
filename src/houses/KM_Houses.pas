@@ -310,7 +310,7 @@ type
   // Storehouse keeps all the resources and flags for them
   TKMHouseStore = class(TKMHouse)
   private
-    WaresCount: array [WARE_MIN .. WARE_MAX] of Word;
+    fWaresCount: array [WARE_MIN .. WARE_MAX] of Word;
     procedure SetWareCnt(aWareType: TKMWareType; aValue: Word);
   protected
     procedure Activate(aWasBuilt: Boolean); override;
@@ -1287,7 +1287,9 @@ end;
 procedure TKMHouse.SetIsClosedForWorker(aIsClosed: Boolean);
 begin
   fIsClosedForWorker := aIsClosed;
-  gHands[fOwner].Stats.HouseClosed(aIsClosed, fType);
+
+  if not gGame.IsMapEditor then
+    gHands[fOwner].Stats.HouseClosed(aIsClosed, fType);
 end;
 
 
@@ -2274,9 +2276,9 @@ var
 begin
   Assert(aWareType in [WARE_MIN..WARE_MAX]);
 
-  CntChange := aValue - WaresCount[aWareType];
+  CntChange := aValue - fWaresCount[aWareType];
 
-  WaresCount[aWareType] := aValue;
+  fWaresCount[aWareType] := aValue;
 
   if CntChange <> 0 then
     gScriptEvents.ProcHouseWareCountChanged(Self, aWareType, aValue, CntChange);
@@ -2287,7 +2289,7 @@ constructor TKMHouseStore.Load(LoadStream: TKMemoryStream);
 begin
   inherited;
   LoadStream.CheckMarker('HouseStore');
-  LoadStream.Read(WaresCount, SizeOf(WaresCount));
+  LoadStream.Read(fWaresCount, SizeOf(fWaresCount));
   LoadStream.Read(NotAcceptFlag, SizeOf(NotAcceptFlag));
   LoadStream.Read(NotAllowTakeOutFlag, SizeOf(NotAllowTakeOutFlag));
 end;
@@ -2297,13 +2299,13 @@ procedure TKMHouseStore.ResAddToIn(aWare: TKMWareType; aCount: Integer = 1; aFro
 var R: TKMWareType;
 begin
   case aWare of
-    wtAll:     for R := Low(WaresCount) to High(WaresCount) do begin
-                  SetWareCnt(R, EnsureRange(WaresCount[R] + aCount, 0, High(Word)));
+    wtAll:     for R := Low(fWaresCount) to High(fWaresCount) do begin
+                  SetWareCnt(R, EnsureRange(fWaresCount[R] + aCount, 0, High(Word)));
                   gHands[fOwner].Deliveries.Queue.AddOffer(Self, R, aCount);
                 end;
     WARE_MIN..
     WARE_MAX:   begin
-                  SetWareCnt(aWare, EnsureRange(WaresCount[aWare] + aCount, 0, High(Word)));
+                  SetWareCnt(aWare, EnsureRange(fWaresCount[aWare] + aCount, 0, High(Word)));
                   gHands[fOwner].Deliveries.Queue.AddOffer(Self,aWare,aCount);
                 end;
     else        raise ELocError.Create('Cant''t add ' + gRes.Wares[aWare].Title, Position);
@@ -2320,14 +2322,14 @@ end;
 function TKMHouseStore.ResOutputAvailable(aWare: TKMWareType; const aCount: Word): Boolean;
 begin
   Assert(aWare in [WARE_MIN..WARE_MAX]);
-  Result := (WaresCount[aWare] >= aCount);
+  Result := (fWaresCount[aWare] >= aCount);
 end;
 
 
 function TKMHouseStore.CheckResIn(aWare: TKMWareType): Word;
 begin
   if aWare in [WARE_MIN..WARE_MAX] then
-    Result := WaresCount[aWare]
+    Result := fWaresCount[aWare]
   else
     raise Exception.Create('Unexpected aWareType');
 end;
@@ -2338,7 +2340,7 @@ var
   R: TKMWareType;
 begin
   for R := WARE_MIN to WARE_MAX do
-    gHands[fOwner].Stats.WareConsumed(R, WaresCount[R]);
+    gHands[fOwner].Stats.WareConsumed(R, fWaresCount[R]);
 
   inherited;
 end;
@@ -2348,16 +2350,16 @@ procedure TKMHouseStore.ResTakeFromOut(aWare: TKMWareType; aCount: Word=1; aFrom
 begin
   if aFromScript then
   begin
-    aCount := Min(aCount, WaresCount[aWare]);
+    aCount := Min(aCount, fWaresCount[aWare]);
     if aCount > 0 then
     begin
       gHands[fOwner].Stats.WareConsumed(aWare, aCount);
       gHands[fOwner].Deliveries.Queue.RemOffer(Self, aWare, aCount);
     end;
   end;
-  Assert(aCount <= WaresCount[aWare]);
+  Assert(aCount <= fWaresCount[aWare]);
 
-  SetWareCnt(aWare, WaresCount[aWare] - aCount);
+  SetWareCnt(aWare, fWaresCount[aWare] - aCount);
 end;
 
 
@@ -2383,7 +2385,7 @@ begin
   begin
     // Check the cheat pattern
     cheatPattern := True;
-    for ware := Low(WaresCount) to High(WaresCount) do
+    for ware := Low(fWaresCount) to High(fWaresCount) do
       cheatPattern := cheatPattern and (NotAcceptFlag[ware] = Boolean(CHEAT_SP_PATTERN[ware]));
 
     if cheatPattern then
@@ -2424,7 +2426,7 @@ procedure TKMHouseStore.Save(SaveStream: TKMemoryStream);
 begin
   inherited;
   SaveStream.PlaceMarker('HouseStore');
-  SaveStream.Write(WaresCount, SizeOf(WaresCount));
+  SaveStream.Write(fWaresCount, SizeOf(fWaresCount));
   SaveStream.Write(NotAcceptFlag, SizeOf(NotAcceptFlag));
   SaveStream.Write(NotAllowTakeOutFlag, SizeOf(NotAllowTakeOutFlag));
 end;

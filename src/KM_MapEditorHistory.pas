@@ -3,7 +3,7 @@ unit KM_MapEditorHistory;
 interface
 uses
   Classes, Generics.Collections, SysUtils,
-  KM_Defaults, KM_Points,
+  KM_Defaults, KM_Points, KM_CommonTypes, KM_Houses,
   KM_ResWares, KM_ResHouses, KM_ResTileset, KM_MapEdTypes, KM_Terrain, KM_UnitGroup;
 
 
@@ -15,8 +15,8 @@ type
 //    caStockpiles,
 //    caTriggers,
 //    caWaterLevel,
-    caUnits
-//    caHouses
+    caUnits,
+    caHouses
 //    caFences,
 //    caFields
     //todo -cPractical: Other areas
@@ -138,21 +138,25 @@ type
     procedure Apply(aArea: TKMCheckpointArea = caAll); override;
   end;
 
-//  TKMCheckpointHouses = class(TKMCheckpoint)
-//  private
-//    // Each Undo step stores all houses for simplicity
-//    fHouses: array of record
-//      HouseType: TKMHouseType;
-//      Position: TKMPoint;
-//      Owner: TKMHandID;
-//      Health: Integer;
-//      WaresIn: array [0..Ord(High(TKMWareType))] of Integer;
-//      WaresOut: array [0..Ord(High(TKMWareType))] of Integer;
-//    end;
-//  public
-//    constructor Create(const aCaption: string);
-//    procedure Apply(aArea: TKMCheckpointArea = caAll); override;
-//  end;
+  TKMCheckpointHouses = class(TKMCheckpoint)
+  private
+    // Each Undo step stores all houses for simplicity
+    fHouses: array of record
+      HouseType: TKMHouseType;
+      Position: TKMPoint;
+      Owner: TKMHandID;
+      Health: Integer;
+      DeliveryMode: TKMDeliveryMode;
+      Repair: Boolean;
+      ClosedForWorker: Boolean;
+      FlagPoint: TKMPoint;
+      WaresIn: array [0..Ord(High(TKMWareType))] of Integer;
+      WaresOut: array [0..Ord(High(TKMWareType))] of Integer;
+    end;
+  public
+    constructor Create(const aCaption: string);
+    procedure Apply(aArea: TKMCheckpointArea = caAll); override;
+  end;
 
 //  TKMCheckpointWaterLevel = class(TKMCheckpoint)
 //  private
@@ -183,10 +187,14 @@ type
     fCheckpointPos: Integer;
     fCheckpoints: TList<TKMCheckpoint>;
 
+    fOnChange: TEvent;
+
     procedure IncCounter;
   public
     constructor Create;
     destructor Destroy; override;
+
+    property OnChange: TEvent read fOnChange write fOnChange;
 
     function CanUndo: Boolean;
     function CanRedo: Boolean;
@@ -202,7 +210,8 @@ type
 
 implementation
 uses
-  KM_HandsCollection, KM_Houses, KM_Hand, KM_Units, KM_UnitsCollection, KM_CommonClasses, KM_UnitWarrior, KM_Utils, KM_Game, KM_CommonUtils;
+  KM_HandsCollection, KM_Hand, KM_Units, KM_UnitsCollection, KM_CommonClasses, KM_UnitWarrior, KM_Utils,
+  KM_Game, KM_CommonUtils, KM_Resource, KM_HouseTownhall, KM_HouseBarracks, KM_HouseMarket;
 
 
 { TKMCheckpoint }
@@ -225,7 +234,7 @@ begin
 //    caStockpiles: Result := TKMCheckpointStockpiles.Create(aCaption);
 //    caTriggers:   Result := TKMCheckpointTriggers.Create(aCaption);
     caUnits:      Result := TKMCheckpointUnits.Create(aCaption);
-//    caHouses:     Result := TKMCheckpointHouses.Create(aCaption);
+    caHouses:     Result := TKMCheckpointHouses.Create(aCaption);
 //    caWaterLevel: Result := TKMCheckpointWaterLevel.Create(aCaption);
   else
     raise Exception.Create('Error Message');
@@ -279,6 +288,7 @@ begin
   Result.Tiles       := aPaintedTile.Tiles;
   Result.HeightAdd   := aPaintedTile.HeightAdd;
   Result.TileOverlay := aTile.TileOverlay;
+  Result.TileOwner   := aTile.TileOwner;
   for L := 0 to 2 do
   begin
     Result.Layer[L].Terrain   := aTile.Layer[L].Terrain;
@@ -305,6 +315,7 @@ begin
   aPaintedTile.Tiles        := aUndoTile.Tiles;
   aPaintedTile.HeightAdd    := aUndoTile.HeightAdd;
   aTile.TileOverlay         := aUndoTile.TileOverlay;
+  aTile.TileOwner           := aUndoTile.TileOwner;
   for L := 0 to 2 do
   begin
     aTile.Layer[L].Terrain  := aUndoTile.Layer[L].Terrain;
@@ -538,7 +549,6 @@ begin
     begin
       U := gHands[I].Units[K];
       if U.UnitType in [CITIZEN_MIN..CITIZEN_MAX] then
-//      if U is TKMCivilUnit then
       begin
         fUnits[L].UnitType := U.UnitType;
         fUnits[L].Position := U.CurrPosition;
@@ -580,6 +590,7 @@ var
   U: TKMUnit;
   G: TKMUnitGroup;
 begin
+  gHands.PlayerAnimals.Units.Clear;
   for I := 0 to gHands.Count - 1 do
   begin
     gHands[I].UnitGroups.Clear;
@@ -589,101 +600,151 @@ begin
   for I := 0 to High(fUnits) do
   begin
     if fUnits[I].UnitType in [CITIZEN_MIN..CITIZEN_MAX] then
-      U := gHands[fUnits[I].Owner].AddUnit(fUnits[I].UnitType, fUnits[I].Position, False)
+      U := gHands[fUnits[I].Owner].AddUnit(fUnits[I].UnitType, fUnits[I].Position, False, 0, False, False)
     else
-    if fUnits[I].UnitType in [WARRIOR_MIN..WARRIOR_MAX] then
-      U := gHands[fUnits[I].Owner].AddUnitGroup(fUnits[I].UnitType, fUnits[I].Position, dirS, 1, 1).FlagBearer
-    else
-      U := gHands.PlayerAnimals.AddUnit(fUnits[I].UnitType, fUnits[I].Position);
-
-    U.Condition := fUnits[I].Condition;
-
-    // Warriors
     if fUnits[I].UnitType in [WARRIOR_MIN..WARRIOR_MAX] then
     begin
-      Assert(U is TKMUnitWarrior);
-
-      U.Direction := fUnits[I].Dir;
-      G := gHands[fUnits[I].Owner].UnitGroups.AddGroup(TKMUnitWarrior(U));
+      G := gHands[fUnits[I].Owner].AddUnitGroup(fUnits[I].UnitType, fUnits[I].Position, fUnits[I].Dir, 1, 1, False);
+      U := G.FlagBearer;
+//      G := gHands[fUnits[I].Owner].UnitGroups.AddGroup(TKMUnitWarrior(U));
       G.MapEdCount := fUnits[I].GroupMemberCount;
       G.UnitsPerRow := fUnits[I].GroupColumns;
       G.MapEdOrder := fUnits[I].GroupOrder;
-    end;
+//      U := gHands[fUnits[I].Owner].AddUnitGroup(fUnits[I].UnitType, fUnits[I].Position, dirS, 1, 1, False).FlagBearer
+    end
+    else
+      U := gHands.PlayerAnimals.AddUnit(fUnits[I].UnitType, fUnits[I].Position, False);
+
+    U.Condition := fUnits[I].Condition;
   end;
 end;
 
 
 { TKMCheckpointHouses }
-//constructor TKMCheckpointHouses.Create(const aCaption: string);
-//  procedure AddHouse(aHouse: TKMHouse; var aCount: Integer);
-//  var
-//    I: Integer;
-//    spec: TKMHouseSpec;
-//  begin
-//    fHouses[aCount].HouseType := aHouse.HouseType;
-//    fHouses[aCount].Position := aHouse.Position;
-//    fHouses[aCount].Owner := aHouse.Owner;
-//    fHouses[aCount].Health := aHouse.GetHealth;
-//
-//    spec := gRes.Houses[aHouse.HouseType];
-//
-//    for I := 0 to spec.WareInCount - 1 do
-//      fHouses[aCount].WaresIn[I] := aHouse.WareInPeek(I);
-//
-//    for I := 0 to spec.WareOutCount - 1 do
-//      fHouses[aCount].WaresOut[I] := aHouse.WareOutPeek(I);
-//
-//    Inc(aCount);
-//  end;
-//var
-//  I, K, houseCount: Integer;
-//begin
-//  inherited Create(aCaption);
-//
-//  fArea := caHouses;
-//
-//  houseCount := 0;
-//  for I := 0 to gHands.Count - 1 do
-//    Inc(houseCount, gHands[I].Houses.Count);
-//  SetLength(fHouses, houseCount);
-//  houseCount := 0;
-//
-//  for I := 0 to gHands.Count - 1 do
-//  for K := 0 to gHands[I].Houses.Count - 1 do
-//  if not gHands[I].Houses[K].IsDestroyed then
-//    AddHouse(gHands[I].Houses[K], houseCount);
-//
-//  // Trim to actual length (which is always smaller due to erased(dead) Houses)
-//  SetLength(fHouses, houseCount);
-//end;
-//
-//
-//procedure TKMCheckpointHouses.Apply(aArea: TKMCheckpointArea = caAll);
-//var
-//  I, K: Integer;
-//  H: TKMHouse;
-//  spec: TKMHouseSpec;
-//begin
-//  // Remove all houses and apply them anew
-//  for I := 0 to gHands.Count - 1 do
-//    gHands[I].Houses.Clear;
-//
-//  for I := 0 to High(fHouses) do
-//  begin
-//    H := gHands[fHouses[I].Owner].HouseAdd(fHouses[I].HouseType, fHouses[I].Position, fHouses[I].Face, tpHouseScript);
-//    H.AddDamage(H.HealthMax - fHouses[I].Health, nil, True);
-//
-//    spec := gRes.Houses[fHouses[I].HouseType];
-//
-//    for K := 0 to spec.WareInCount - 1 do
-//    if fHouses[I].WaresIn[K] > 0 then
-//      H.WareInAdd(K, fHouses[I].WaresIn[K], wstNoChange);
-//
-//    for K := 0 to spec.WareOutCount - 1 do
-//    if fHouses[I].WaresOut[K] > 0 then
-//      H.WareOutAdd(K, fHouses[I].WaresOut[K], wstNoChange);
-//  end;
-//end;
+constructor TKMCheckpointHouses.Create(const aCaption: string);
+  procedure AddHouse(aHouse: TKMHouse; var aCount: Integer);
+  var
+    I: Integer;
+    WT: TKMWareType;
+    spec: TKMHouseSpec;
+  begin
+    fHouses[aCount].HouseType := aHouse.HouseType;
+    fHouses[aCount].Position := aHouse.Position;
+    fHouses[aCount].Owner := aHouse.Owner;
+    fHouses[aCount].Health := aHouse.GetHealth;
+    fHouses[aCount].DeliveryMode := aHouse.DeliveryMode;
+    fHouses[aCount].Repair := aHouse.BuildingRepair;
+    fHouses[aCount].ClosedForWorker := aHouse.IsClosedForWorker;
+
+    if aHouse is TKMHouseWFlagPoint then
+      fHouses[aCount].FlagPoint := TKMHouseWFlagPoint(aHouse).FlagPoint;
+
+    spec := gRes.Houses[aHouse.HouseType];
+
+    case aHouse.HouseType of
+      htTownHall:   begin
+                      fHouses[aCount].WaresIn[0] := TKMHouseTownhall(aHouse).GoldCnt;
+                    end;
+      htStore:      begin
+                      for WT := WARE_MIN to WARE_MAX do
+                        fHouses[aCount].WaresIn[Ord(WT) - Ord(WARE_MIN)] := TKMHouseStore(aHouse).CheckResIn(WT);
+                    end;
+      htBarracks:   begin
+                      fHouses[aCount].WaresIn[0] := TKMHouseBarracks(aHouse).MapEdRecruitCount;
+                      for WT := WARFARE_MIN to WARFARE_MAX do
+                        fHouses[aCount].WaresIn[Ord(WT) - Ord(WARFARE_MIN) + 1] := TKMHouseBarracks(aHouse).CheckResIn(WT);
+                    end;
+      htMarketplace:;
+      else          begin
+                      for I := 1 to 4 do
+                        if spec.ResInput[I] <> wtNone then
+                          fHouses[aCount].WaresIn[I-1] := aHouse.CheckResIn(spec.ResInput[I])
+                        else
+                          fHouses[aCount].WaresIn[I-1] := 0;
+
+                      for I := 1 to 4 do
+                        if spec.ResOutput[I] <> wtNone then
+                          fHouses[aCount].WaresOut[I-1] := aHouse.CheckResOut(spec.ResOutput[I])
+                        else
+                          fHouses[aCount].WaresOut[I-1] := 0;
+                    end;
+    end;
+
+    Inc(aCount);
+  end;
+var
+  I, K, houseCount: Integer;
+begin
+  inherited Create(aCaption);
+
+  fArea := caHouses;
+
+  houseCount := 0;
+  for I := 0 to gHands.Count - 1 do
+    Inc(houseCount, gHands[I].Houses.Count);
+  SetLength(fHouses, houseCount);
+  houseCount := 0;
+
+  for I := 0 to gHands.Count - 1 do
+  for K := 0 to gHands[I].Houses.Count - 1 do
+  if not gHands[I].Houses[K].IsDestroyed then
+    AddHouse(gHands[I].Houses[K], houseCount);
+
+  // Trim to actual length (which is always smaller due to erased(dead) Houses)
+  SetLength(fHouses, houseCount);
+end;
+
+
+procedure TKMCheckpointHouses.Apply(aArea: TKMCheckpointArea = caAll);
+var
+  I, K: Integer;
+  H: TKMHouse;
+  spec: TKMHouseSpec;
+  WT: TKMWareType;
+begin
+  // Remove all houses and apply them anew
+  for I := 0 to gHands.Count - 1 do
+    gHands[I].Houses.Clear;
+
+  for I := 0 to High(fHouses) do
+  begin
+    H := gHands[fHouses[I].Owner].AddHouse(fHouses[I].HouseType, fHouses[I].Position.X, fHouses[I].Position.Y, False);
+    H.AddDamage(H.MaxHealth - fHouses[I].Health, nil, True);
+
+    spec := gRes.Houses[fHouses[I].HouseType];
+    H.SetDeliveryModeInstantly(fHouses[I].DeliveryMode);
+    H.BuildingRepair := fHouses[I].Repair;
+    H.IsClosedForWorker := fHouses[I].ClosedForWorker;
+
+    if H is TKMHouseWFlagPoint then
+      TKMHouseWFlagPoint(H).FlagPoint := fHouses[I].FlagPoint;
+
+    case H.HouseType of
+      htTownHall:   begin
+                      TKMHouseTownhall(H).GoldCnt := fHouses[I].WaresIn[0];
+                    end;
+      htStore:      begin
+                      for WT := WARE_MIN to WARE_MAX do
+                        TKMHouseStore(H).ResAddToIn(WT, fHouses[I].WaresIn[Ord(WT) - Ord(WARE_MIN)]);
+                    end;
+      htBarracks:   begin
+                      TKMHouseBarracks(H).MapEdRecruitCount := fHouses[I].WaresIn[0];
+                      for WT := WARFARE_MIN to WARFARE_MAX do
+                        TKMHouseBarracks(H).ResAddToIn(WT, fHouses[I].WaresIn[Ord(WT) - Ord(WARFARE_MIN) + 1]);
+                    end;
+      htMarketplace:;
+      else          begin
+                      for K := 1 to 4 do
+                        if spec.ResInput[K] <> wtNone then
+                          H.ResAddToIn(spec.ResInput[K], fHouses[I].WaresIn[K-1]);
+
+                      for K := 1 to 4 do
+                        if spec.ResOutput[K] <> wtNone then
+                          H.ResAddToOut(spec.ResOutput[K], fHouses[I].WaresOut[K-1]);
+                    end;
+    end;
+  end;
+end;
 
 
 { TKMCheckpointWaterLevel }
@@ -778,6 +839,9 @@ begin
     fCheckpointPos := fCheckpoints.Count - 1;
     IncCounter;
   end;
+
+  if Assigned (fOnChange) then
+    fOnChange;
 end;
 
 
@@ -850,6 +914,9 @@ begin
   Dec(fCheckpointPos);
 
   IncCounter;
+
+  if Assigned (fOnChange) then
+    fOnChange;
 end;
 
 
@@ -869,6 +936,9 @@ begin
   fCheckpointPos := next;
 
   IncCounter;
+
+  if Assigned (fOnChange) then
+    fOnChange;
 end;
 
 

@@ -8,7 +8,7 @@ uses
   KM_RenderUI, KM_Pics, KM_Minimap, KM_Viewport, KM_ResFonts,
   KM_CommonClasses, KM_CommonTypes, KM_Points, KM_Defaults;
 
-
+ 
 type
   TNotifyEventShift = procedure(Sender: TObject; Shift: TShiftState) of object;
   TNotifyEventMB = procedure(Sender: TObject; AButton: TMouseButton) of object;
@@ -122,6 +122,9 @@ type
     fOnClickHold: TNotifyEvenClickHold;
     fOnDoubleClick: TNotifyEvent;
     fOnMouseWheel: TNotifyEventMW;
+//    fOnMouseDown: TNotifyMouseEvent;
+//    fOnMouseUp: TNotifyMouseEvent;
+//    fOnMouseMove: TNotifyMouseEvent;
     fOnFocus: TBooleanObjEvent;
     fOnChangeVisibility: TBooleanObjEvent;
     fOnChangeEnableStatus: TBooleanObjEvent;
@@ -193,8 +196,8 @@ type
     procedure UpdateVisibility; virtual;
     procedure UpdateEnableStatus; virtual;
     procedure ControlMouseMove(Sender: TObject; X,Y: Integer; Shift: TShiftState); virtual;
-    procedure ControlMouseDown(Sender: TObject; Shift: TShiftState); virtual;
-    procedure ControlMouseUp(Sender: TObject; Shift: TShiftState); virtual;
+    procedure ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton); virtual;
+    procedure ControlMouseUp(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton); virtual;
     procedure FocusChanged(aFocused: Boolean); virtual;
     procedure DoClickHold(Sender: TObject; Button: TMouseButton; var aHandled: Boolean); virtual;
     function DoHandleMouseWheelByDefault: Boolean; virtual;
@@ -316,8 +319,8 @@ type
     procedure SetWidth(aValue: Integer); override;
 
     procedure ControlMouseMove(Sender: TObject; X, Y: Integer; Shift: TShiftState); override;
-    procedure ControlMouseDown(Sender: TObject; Shift: TShiftState); override;
-    procedure ControlMouseUp(Sender: TObject; Shift: TShiftState); override;
+    procedure ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton); override;
+    procedure ControlMouseUp(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton); override;
     procedure UpdateVisibility; override;
     procedure UpdateEnableStatus; override;
     function DoPanelHandleMouseWheelByDefault: Boolean; virtual;
@@ -637,7 +640,7 @@ type
     procedure DeleteSelectedText;
   protected
     fText: UnicodeString;
-    procedure ControlMouseDown(Sender: TObject; Shift: TShiftState); override;
+    procedure ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton); override;
     procedure FocusChanged(aFocused: Boolean); override;
     function GetMaxLength: Word; virtual; abstract;
     function IsCharValid(aChar: WideChar): Boolean; virtual; abstract;
@@ -890,7 +893,7 @@ type
     procedure ValidateText; override;
     procedure FocusChanged(aFocused: Boolean); override;
     function KeyEventHandled(Key: Word; Shift: TShiftState): Boolean; override;
-    procedure ControlMouseDown(Sender: TObject; Shift: TShiftState); override;
+    procedure ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton); override;
     function DoHandleMouseWheelByDefault: Boolean; override;
   public
     ValueMin: Integer;
@@ -1139,7 +1142,6 @@ type
     procedure SetBackAlpha(aValue: single);
     procedure SetItemHeight(const Value: byte);
     procedure SetAutoHideScrollBar(Value: boolean);
-    procedure UpdateScrollBar;
     function GetItem(aIndex: Integer): UnicodeString;
     function GetSeparatorPos(aIndex: Integer): Integer;
     function GetItemTop(aIndex: Integer): Integer;
@@ -1182,6 +1184,9 @@ type
 
     property Item[aIndex: Integer]: UnicodeString read GetItem; default;
     property ItemHeight: Byte read fItemHeight write SetItemHeight; //Accessed by DropBox
+    property Items: TStringList read fItems;
+    procedure UpdateScrollBar;
+//    procedure SetItemIndex;
 
     property SeparatorPos[aIndex: Integer]: Integer read GetSeparatorPos;
     property SeparatorFont: TKMFont read fSeparatorFont write fSeparatorFont;
@@ -1600,7 +1605,7 @@ type
     procedure SetEnabled(aValue: Boolean); override;
     procedure SetTop(aValue: Integer); override;
     procedure FocusChanged(aFocused: Boolean); override;
-    procedure ControlMouseDown(Sender: TObject; Shift: TShiftState); override;
+    procedure ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton); override;
     function DoHandleMouseWheelByDefault: Boolean; override;
   public
     constructor Create(aParent: TKMPanel; aLeft, aTop, aWidth, aHeight: Integer; aFont: TKMFont; aStyle: TKMButtonStyle; aSelectable: Boolean = True);
@@ -1655,23 +1660,39 @@ type
   end;
 
 
-  TKMPopUpBGImageType = (pubgitGray, pubgitYellowish);
+  TKMPopUpBGImageType = (pubgitGray, pubgitYellow, pubgitScrollWCross);
 
   TKMPopUpPanel = class(TKMPanel)
   private
+    fDragging: Boolean;
+    fDragStartPos: TKMPoint;
     fBGImageType: TKMPopUpBGImageType;
     procedure UpdateSizes;
+    procedure Close(Sender: TObject);
   protected
-    ImageBG: TKMImage;
     BevelBG: TKMBevel;
+    BevelShade: TKMBevel;
     procedure SetWidth(aValue: Integer); override;
     procedure SetHeight(aValue: Integer); override;
+    procedure SetLeft(aValue: Integer); override;
+    procedure SetTop(aValue: Integer); override;
   public
+    DragEnabled: Boolean;
+    ImageBG, ImageClose: TKMImage;
     Caption: UnicodeString;
     Font: TKMFont;
     FontColor: TColor4;
     constructor Create(aParent: TKMPanel; aWidth, aHeight: Integer; const aCaption: UnicodeString = '';
-                       aImageType: TKMPopUpBGImageType = pubgitYellowish; aShowBevel: Boolean = True);
+                       aImageType: TKMPopUpBGImageType = pubgitYellow; aShowBevel: Boolean = True; aShowShadeBevel: Boolean = True);
+
+    procedure MouseDown (X,Y: Integer; Shift: TShiftState; Button: TMouseButton); override;
+    procedure MouseMove (X,Y: Integer; Shift: TShiftState); override;
+    procedure MouseUp   (X,Y: Integer; Shift: TShiftState; Button: TMouseButton); override;
+
+    procedure ControlMouseMove(Sender: TObject; X,Y: Integer; Shift: TShiftState); override;
+    procedure ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton); override;
+    procedure ControlMouseUp(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton); override;
+
     procedure PaintPanel(aPaintLayer: Integer); override;
   end;
 
@@ -2048,7 +2069,9 @@ procedure TKMControl.MouseUp(X,Y: Integer; Shift: TShiftState; Button: TMouseBut
 var
   ClickHoldHandled: Boolean;
 begin
-  //if Assigned(fOnMouseUp) then OnMouseUp(Self); { Unused }
+//  if Assigned(fOnMouseUp) then
+//    fOnMouseUp(Self);
+
   if (csDown in State) then
   begin
     State := State - [csDown];
@@ -2573,13 +2596,13 @@ begin
 end;
 
 
-procedure TKMControl.ControlMouseDown(Sender: TObject; Shift: TShiftState);
+procedure TKMControl.ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton);
 begin
   //Let descendants override this method
 end;
 
 
-procedure TKMControl.ControlMouseUp(Sender: TObject; Shift: TShiftState);
+procedure TKMControl.ControlMouseUp(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton);
 begin
   //Let descendants override this method
 end;
@@ -2895,23 +2918,23 @@ begin
 end;
 
 
-procedure TKMPanel.ControlMouseDown(Sender: TObject; Shift: TShiftState);
+procedure TKMPanel.ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton);
 var
   I: Integer;
 begin
   inherited;
   for I := 0 to ChildCount - 1 do
-    Childs[I].ControlMouseDown(Sender, Shift);
+    Childs[I].ControlMouseDown(Sender, X, Y, Shift, Button);
 end;
 
 
-procedure TKMPanel.ControlMouseUp(Sender: TObject; Shift: TShiftState);
+procedure TKMPanel.ControlMouseUp(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton);
 var
   I: Integer;
 begin
   inherited;
   for I := 0 to ChildCount - 1 do
-    Childs[I].ControlMouseUp(Sender, Shift);
+    Childs[I].ControlMouseUp(Sender, X, Y, Shift, Button);
 end;
 
 
@@ -4041,7 +4064,7 @@ begin
 end;
 
 
-procedure TKMSelectableEdit.ControlMouseDown(Sender: TObject; Shift: TShiftState);
+procedure TKMSelectableEdit.ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton);
 begin
   inherited;
   if (Sender <> Self) then
@@ -5101,7 +5124,7 @@ begin
 end;
 
 
-procedure TKMNumericEdit.ControlMouseDown(Sender: TObject; Shift: TShiftState);
+procedure TKMNumericEdit.ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton);
 begin
   inherited;
   if (Sender <> Self) then
@@ -6630,7 +6653,7 @@ begin
 end;
 
 
-procedure TKMMemo.ControlMouseDown(Sender: TObject; Shift: TShiftState);
+procedure TKMMemo.ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton);
 begin
   inherited;
   // Reset all, if other control was clicked
@@ -8203,7 +8226,8 @@ end;
 
 { TKMPopUpPanel }
 constructor TKMPopUpPanel.Create(aParent: TKMPanel; aWidth, aHeight: Integer; const aCaption: UnicodeString = '';
-                                 aImageType: TKMPopUpBGImageType = pubgitYellowish; aShowBevel: Boolean = True);
+                                 aImageType: TKMPopUpBGImageType = pubgitYellow; aShowBevel: Boolean = True;
+                                 aShowShadeBevel: Boolean = True);
 begin
   inherited Create(aParent, (aParent.Width div 2) - (aWidth div 2), (aParent.Height div 2) - (aHeight div 2), aWidth, aHeight);
 
@@ -8212,12 +8236,23 @@ begin
   Font := fntOutline;
   FontColor := icWhite;
   Caption := aCaption;
+  DragEnabled := False;
 
-  TKMBevel.Create(Self, -2000,  -2000, 5000, 5000);
+  if aShowShadeBevel then
+    BevelShade := TKMBevel.Create(Self, -2000,  -2000, 5000, 5000);
 
   case fBGImageType of
-    pubgitGray: ImageBG := TKMImage.Create(Self, -20, -50, aWidth + 40, aHeight + 70, 15, rxGuiMain);
-    pubgitYellowish: ImageBG := TKMImage.Create(Self, -25, -80, aWidth + 50, aHeight + 130, 18, rxGuiMain);
+    pubgitGray:    ImageBG := TKMImage.Create(Self, -20, -50, aWidth + 40, aHeight + 70,  15, rxGuiMain);
+    pubgitYellow:  ImageBG := TKMImage.Create(Self, -25, -80, aWidth + 50, aHeight + 130, 18, rxGuiMain);
+    pubgitScrollWCross:
+      begin
+        ImageBG := TKMImage.Create(Self, -20, -50, aWidth + 40, aHeight + 70,  409);
+        ImageClose := TKMImage.Create(Self, -20 + (aWidth + 40) - ((aWidth + 40) div 10) - 16, 24 - 50, 31, 30, 52);
+        ImageClose.Anchors := [anTop, anRight];
+        ImageClose.Hint := gResTexts[TX_MSG_CLOSE_HINT];
+        ImageClose.OnClick := Close;
+        ImageClose.HighlightOnMouseOver := True;
+      end;
   end;
 
   ImageBG.ImageStretch;
@@ -8231,6 +8266,66 @@ begin
 end;
 
 
+procedure TKMPopUpPanel.Close(Sender: TObject);
+begin
+  Hide;
+end;
+
+
+procedure TKMPopUpPanel.ControlMouseDown(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton);
+begin
+  inherited;
+
+  if Sender = ImageBG then
+    MouseDown(X, Y, Shift, Button);
+end;
+
+procedure TKMPopUpPanel.ControlMouseMove(Sender: TObject; X, Y: Integer; Shift: TShiftState);
+begin
+  inherited;
+
+  MouseMove(X, Y, Shift);
+end;
+
+procedure TKMPopUpPanel.ControlMouseUp(Sender: TObject; X,Y: Integer; Shift: TShiftState; Button: TMouseButton);
+begin
+  inherited;
+
+  MouseUp(X, Y, Shift, Button);
+end;
+
+
+procedure TKMPopUpPanel.MouseDown(X, Y: Integer; Shift: TShiftState; Button: TMouseButton);
+begin
+  inherited;
+
+  if not DragEnabled then Exit;
+
+  fDragging := True;
+  fDragStartPos := TKMPoint.New(X,Y);
+end;
+
+procedure TKMPopUpPanel.MouseMove(X, Y: Integer; Shift: TShiftState);
+begin
+  inherited;
+
+  if not DragEnabled or not fDragging then Exit;
+
+  Left := EnsureRange(Left + X - fDragStartPos.X, 0, fMasterControl.fMasterPanel.Width - Width);
+  Top := EnsureRange(Top + Y - fDragStartPos.Y, -ImageBG.Top, fMasterControl.fMasterPanel.Height - Height);
+
+  fDragStartPos := TKMPoint.New(X,Y);
+end;
+
+procedure TKMPopUpPanel.MouseUp(X, Y: Integer; Shift: TShiftState; Button: TMouseButton);
+begin
+  inherited;
+
+  if not DragEnabled then Exit;
+
+  fDragging := False;
+end;
+
 procedure TKMPopUpPanel.PaintPanel(aPaintLayer: Integer);
 begin
   inherited;
@@ -8242,13 +8337,27 @@ end;
 procedure TKMPopUpPanel.SetHeight(aValue: Integer);
 begin
   inherited;
+
   UpdateSizes;
+end;
+
+
+procedure TKMPopUpPanel.SetLeft(aValue: Integer);
+begin
+  inherited SetLeft(EnsureRange(aValue, Max(0, -ImageBG.Left - 5), fMasterControl.fMasterPanel.Width - Width));
+end;
+
+
+procedure TKMPopUpPanel.SetTop(aValue: Integer);
+begin
+  inherited SetTop(EnsureRange(aValue, Max(0, -ImageBG.Top - 10), fMasterControl.fMasterPanel.Height - Height));
 end;
 
 
 procedure TKMPopUpPanel.SetWidth(aValue: Integer);
 begin
   inherited;
+
   UpdateSizes;
 end;
 
@@ -8261,7 +8370,7 @@ begin
       ImageBG.Width := Width + 40;
       ImageBG.Height := Height + 70;
     end;
-    pubgitYellowish:
+    pubgitYellow:
     begin
       ImageBG.Width := Width + 50;
       ImageBG.Height := Height + 140;
@@ -9883,7 +9992,7 @@ end;
 procedure TKMMasterControl.MouseDown(X,Y: Integer; Shift: TShiftState; Button: TMouseButton);
 begin
   CtrlDown := HitControl(X,Y);
-  fMasterPanel.ControlMouseDown(CtrlDown, Shift);
+  fMasterPanel.ControlMouseDown(CtrlDown, X, Y, Shift, Button);
   if CtrlDown <> nil then
     CtrlDown.MouseDown(X, Y, Shift, Button);
 end;
@@ -9933,7 +10042,7 @@ begin
   else
     fCtrlDown := nil;
 
-  fMasterPanel.ControlMouseUp(CtrlUp, Shift); // Must be invoked before CtrlUp.MouseUp to avoid problems on game Exit
+  fMasterPanel.ControlMouseUp(CtrlUp, X, Y, Shift, Button); // Must be invoked before CtrlUp.MouseUp to avoid problems on game Exit
   if CtrlUp <> nil then
     CtrlUp.MouseUp(X, Y, Shift, Button);
 

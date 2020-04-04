@@ -72,8 +72,8 @@ type
     procedure CleanUpUnitPointer(var aUnit: TKMUnit);
     procedure CleanUpGroupPointer(var aGroup: TKMUnitGroup);
     procedure CleanUpHousePointer(var aHouse: TKMHouse);
-    procedure RemAnyHouse(const Position: TKMPoint);
-    procedure RemAnyUnit(const Position: TKMPoint);
+    function RemAnyHouse(const Position: TKMPoint): Boolean;
+    function RemAnyUnit(const Position: TKMPoint; aMakeCheckpoint: Boolean): Boolean;
     procedure RevealForTeam(aPlayer: TKMHandID; const Pos: TKMPoint; Radius,Amount: Word);
     procedure SyncFogOfWar;
     procedure AddDefaultGoalsToAll(aMissionMode: TKMissionMode);
@@ -843,35 +843,41 @@ end;
 
 
 //MapEd procedure to remove any house under cursor
-procedure TKMHandsCollection.RemAnyHouse(const Position: TKMPoint);
+function TKMHandsCollection.RemAnyHouse(const Position: TKMPoint): Boolean;
 var
   H: TKMHouse;
 begin
   Assert(gGame.IsMapEditor, 'RemAnyHouse is not allowed outside of MapEditor');
 
   H := HousesHitTest(Position.X, Position.Y);
-  if H <> nil then
+  Result := H <> nil;
+  if Result then
   begin
     H.DemolishHouse(H.Owner, True);
     fHandsList[H.Owner].Houses.DeleteHouseFromList(H);
+
+    gGame.MapEditor.History.MakeCheckpoint(caHouses, 'Remove house');
   end;
 end;
 
 
 //MapEd procedure to remove any unit under cursor
-procedure TKMHandsCollection.RemAnyUnit(const Position: TKMPoint);
+function TKMHandsCollection.RemAnyUnit(const Position: TKMPoint; aMakeCheckpoint: Boolean): Boolean;
 var
   I: Integer;
 begin
   Assert(gGame.IsMapEditor, 'RemAnyUnit is not allowed outside of MapEditor');
 
+  Result := False;
   for I := 0 to fCount - 1 do
-    fHandsList[I].RemGroup(Position);
+    Result := fHandsList[I].RemGroup(Position);
   for I := 0 to fCount - 1 do
-    fHandsList[I].RemUnit(Position);
-  fPlayerAnimals.RemUnit(Position);
+    Result := fHandsList[I].RemUnit(Position) or Result; //Should remove Unit as well after remove group
 
-  gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Remove unit');
+  Result := fPlayerAnimals.RemUnit(Position) or Result;
+
+  if aMakeCheckpoint and Result then
+    gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Remove unit');
 end;
 
 

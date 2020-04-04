@@ -32,8 +32,8 @@ type
     property ID: TKMHandID read fID;
     property Units: TKMUnitsCollection read fUnits;
 
-    function AddUnit(aUnitType: TKMUnitType; const aLoc: TKMPoint): TKMUnit;
-    procedure RemUnit(const Position: TKMPoint);
+    function AddUnit(aUnitType: TKMUnitType; const aLoc: TKMPoint; aMakeCheckpoint: Boolean = True): TKMUnit;
+    function RemUnit(const Position: TKMPoint): Boolean;
     function UnitsHitTest(const aLoc: TKMPoint; const UT: TKMUnitType = utAny): TKMUnit; overload;
     function UnitsHitTest(X, Y: Integer; const UT: TKMUnitType = utAny): TKMUnit; overload;
 
@@ -152,8 +152,10 @@ type
 
     procedure AfterMissionInit(aFlattenRoads: Boolean);
 
-    function AddUnit(aUnitType: TKMUnitType; const aLoc: TKMPoint; AutoPlace: Boolean = True; aRequiredWalkConnect: Byte = 0; aCheat: Boolean = False): TKMUnit; reintroduce;
-    function AddUnitGroup(aUnitType: TKMUnitType; const Position: TKMPoint; aDir: TKMDirection; aUnitPerRow, aCount: Word): TKMUnitGroup;
+    function AddUnit(aUnitType: TKMUnitType; const aLoc: TKMPoint; AutoPlace: Boolean = True; aRequiredWalkConnect: Byte = 0;
+                     aCheat: Boolean = False; aMakeCheckpoint: Boolean = True): TKMUnit; reintroduce;
+    function AddUnitGroup(aUnitType: TKMUnitType; const Position: TKMPoint; aDir: TKMDirection; aUnitPerRow, aCount: Word;
+                          aMakeCheckpoint: Boolean = True): TKMUnitGroup;
 
     function TrainUnit(aUnitType: TKMUnitType; const Position: TKMPoint): TKMUnit;
 
@@ -188,7 +190,7 @@ type
     function AddHouse(aHouseType: TKMHouseType; PosX, PosY: Word; RelativeEntrace: Boolean): TKMHouse;
     procedure AddHousePlan(aHouseType: TKMHouseType; const aLoc: TKMPoint);
     function AddHouseWIP(aHouseType: TKMHouseType; const aLoc: TKMPoint): TKMHouse;
-    procedure RemGroup(const Position: TKMPoint);
+    function RemGroup(const Position: TKMPoint): Boolean;
     procedure RemHouse(const Position: TKMPoint; DoSilent: Boolean; IsEditor: Boolean = False);
     procedure RemHousePlan(const Position: TKMPoint);
     procedure RemFieldPlan(const Position: TKMPoint; aMakeSound:Boolean);
@@ -257,12 +259,12 @@ begin
 end;
 
 
-function TKMHandCommon.AddUnit(aUnitType: TKMUnitType; const aLoc: TKMPoint): TKMUnit;
+function TKMHandCommon.AddUnit(aUnitType: TKMUnitType; const aLoc: TKMPoint; aMakeCheckpoint: Boolean = True): TKMUnit;
 begin
   //Animals are autoplaced by default
   Result := fUnits.AddUnit(fID, aUnitType, aLoc, True);
 
-  if gGame.IsMapEditor then
+  if gGame.IsMapEditor and aMakeCheckpoint then
     gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Add animal');
 end;
 
@@ -274,13 +276,17 @@ begin
 end;
 
 
-procedure TKMHandCommon.RemUnit(const Position: TKMPoint);
-var U: TKMUnit;
+function TKMHandCommon.RemUnit(const Position: TKMPoint): Boolean;
+var
+  U: TKMUnit;
 begin
   Assert(gGame.IsMapEditor);
 
   U := fUnits.HitTest(Position.X, Position.Y);
-  if U <> nil then
+
+  Result := U <> nil;
+
+  if Result then
     fUnits.RemoveUnit(U);
 end;
 
@@ -405,7 +411,8 @@ end;
 
 //Place unit of aUnitType to aLoc via script
 //AutoPlace - add unit to nearest available spot if aLoc is already taken (or unwalkable)
-function TKMHand.AddUnit(aUnitType: TKMUnitType; const aLoc: TKMPoint; AutoPlace: Boolean = True; aRequiredWalkConnect: Byte = 0; aCheat: Boolean = False): TKMUnit;
+function TKMHand.AddUnit(aUnitType: TKMUnitType; const aLoc: TKMPoint; AutoPlace: Boolean = True;
+                         aRequiredWalkConnect: Byte = 0; aCheat: Boolean = False; aMakeCheckpoint: Boolean = True): TKMUnit;
 var
   G: TKMUnitGroup;
 begin
@@ -446,7 +453,7 @@ begin
       //fScriptingESA.ProcWarriorEquipped(Result, G);
     end;
 
-  if gGame.IsMapEditor then
+  if gGame.IsMapEditor and aMakeCheckpoint then
     gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Add unit');
 end;
 
@@ -524,7 +531,8 @@ begin
 end;
 
 
-function TKMHand.AddUnitGroup(aUnitType: TKMUnitType; const Position: TKMPoint; aDir: TKMDirection; aUnitPerRow, aCount: Word): TKMUnitGroup;
+function TKMHand.AddUnitGroup(aUnitType: TKMUnitType; const Position: TKMPoint; aDir: TKMDirection; aUnitPerRow, aCount: Word;
+                              aMakeCheckpoint: Boolean = True): TKMUnitGroup;
 var
   I: Integer;
 begin
@@ -533,7 +541,7 @@ begin
 
   if aUnitType in [CITIZEN_MIN..CITIZEN_MAX] then
     for I := 0 to aCount - 1 do
-      AddUnit(aUnitType, Position, True)
+      AddUnit(aUnitType, Position, True, 0, False, aMakeCheckpoint)
   else
   if aUnitType in [WARRIOR_MIN..WARRIOR_MAX] then
     Result := fUnitGroups.AddGroup(fID, aUnitType, Position.X, Position.Y, aDir, aUnitPerRow, aCount);
@@ -542,7 +550,7 @@ begin
   if Result <> nil then
     Result.OnGroupDied := GroupDied;
 
-  if gGame.IsMapEditor then
+  if gGame.IsMapEditor and aMakeCheckpoint then
     gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Add unit group');
 
   //Units will be added to statistic inside the function for some units may not fit on map
@@ -1248,13 +1256,15 @@ begin
 end;
 
 
-procedure TKMHand.RemGroup(const Position: TKMPoint);
-var Group: TKMUnitGroup;
+function TKMHand.RemGroup(const Position: TKMPoint): Boolean;
+var
+  Group: TKMUnitGroup;
 begin
   Assert(gGame.IsMapEditor);
 
   Group := fUnitGroups.HitTest(Position.X, Position.Y);
-  if Group <> nil then
+  Result := Group <> nil;
+  if Result then
     fUnitGroups.RemGroup(Group);
 end;
 

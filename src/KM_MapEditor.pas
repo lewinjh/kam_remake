@@ -4,7 +4,7 @@ interface
 uses
   Classes, Controls,
   KM_RenderPool, KM_TerrainPainter, KM_TerrainDeposits, KM_TerrainSelection,
-  KM_CommonClasses, KM_Defaults, KM_Points, KM_Maps, KM_MapEditorHistory;
+  KM_CommonTypes, KM_CommonClasses, KM_Defaults, KM_Points, KM_Maps, KM_MapEditorHistory;
 
 
 type
@@ -55,7 +55,7 @@ type
     IsNewMap: Boolean;  // set True for new empty map
     WasSaved: Boolean; // set True when at least 1 map save has been done
 
-    constructor Create(aTerrainPainter: TKMTerrainPainter);
+    constructor Create(aTerrainPainter: TKMTerrainPainter; aOnHistoryChange: TEvent);
     destructor Destroy; override;
     property Deposits: TKMDeposits read fDeposits;
     property Selection: TKMSelection read fSelection;
@@ -96,7 +96,7 @@ const
 
 
 { TKMMapEditor }
-constructor TKMMapEditor.Create(aTerrainPainter: TKMTerrainPainter);
+constructor TKMMapEditor.Create(aTerrainPainter: TKMTerrainPainter; aOnHistoryChange: TEvent);
 var
   I: Integer;
 begin
@@ -117,6 +117,7 @@ begin
   fSelection := TKMSelection.Create(fTerrainPainter);
 
   fHistory := TKMMapEditorHistory.Create;
+  fHistory.OnChange := aOnHistoryChange;
 
   fVisibleLayers := [mlObjects, mlHouses, mlUnits, mlOverlays, mlDeposits];
 
@@ -343,47 +344,64 @@ end;
 
 //aEraseAll - if true all objects under the cursor will be deleted
 procedure TKMMapEditor.EraseObject(aEraseAll: Boolean);
-var Obj: TObject;
-    P: TKMPoint;
+var
+  Obj: TObject;
+  P: TKMPoint;
+  deleted: Boolean;
 begin
+  deleted := False;
   P := gGameCursor.Cell;
   Obj := gMySpectator.HitTestCursor(True);
 
-  //Delete unit/house
-  if Obj is TKMUnit then
-  begin
-    gHands.RemAnyUnit(TKMUnit(Obj).CurrPosition);
-    if not aEraseAll then Exit;
-  end
-  else
-  if Obj is TKMHouse then
-  begin
-    gHands.RemAnyHouse(P);
-    if not aEraseAll then Exit;
-  end;
-
-  //Delete tile object (including corn/wine objects as well)
-  if (gTerrain.Land[P.Y,P.X].Obj <> OBJ_NONE) then
-  begin
-    fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_UNIVERSAL_ERASER]);
-    if gTerrain.TileIsCornField(P) and (gTerrain.GetCornStage(P) in [4,5]) then
-      gTerrain.SetField(P, gTerrain.Land[P.Y,P.X].TileOwner, ftCorn, 3)  // For corn, when delete corn object reduce field stage to 3
-    else if gTerrain.TileIsWineField(P) then
-      gTerrain.RemField(P)
+  try
+    //Delete unit/house
+    if Obj is TKMUnit then
+    begin
+      deleted := gHands.RemAnyUnit(TKMUnit(Obj).CurrPosition, False);
+      if not aEraseAll then Exit;
+    end
     else
-      gTerrain.SetObject(P, OBJ_NONE);
-    if not aEraseAll then Exit;
+    if Obj is TKMHouse then
+    begin
+      deleted := gHands.RemAnyHouse(P) or deleted;
+      if not aEraseAll then Exit;
+    end;
+
+    //Delete tile object (including corn/wine objects as well)
+    if (gTerrain.Land[P.Y,P.X].Obj <> OBJ_NONE) then
+    begin
+      if gTerrain.TileIsCornField(P) and (gTerrain.GetCornStage(P) in [4,5]) then
+        gTerrain.SetField(P, gTerrain.Land[P.Y,P.X].TileOwner, ftCorn, 3)  // For corn, when delete corn object reduce field stage to 3
+      else if gTerrain.TileIsWineField(P) then
+        gTerrain.RemField(P)
+      else
+        gTerrain.SetObject(P, OBJ_NONE);
+
+      deleted := True; // We deleted smth here
+      if not aEraseAll then Exit;
+    end;
+
+    //Delete tile overlay (road/corn/wine)
+    if gTerrain.Land[P.Y,P.X].TileOverlay = toRoad then
+    begin
+      gTerrain.RemRoad(P);
+      deleted := True;
+    end else
+    if gTerrain.Land[P.Y,P.X].TileOverlay <> toNone then
+    begin
+      gTerrain.SetOverlay(P, toNone, True);
+      deleted := True;
+    end;
+
+    if gTerrain.TileIsCornField(P) or gTerrain.TileIsWineField(P) then
+    begin
+      gTerrain.RemField(P);
+      deleted := True;
+    end;
+  finally
+    if deleted then
+      fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_UNIVERSAL_ERASER]);
   end;
-
-  //Delete tile overlay (road/corn/wine)
-  if gTerrain.Land[P.Y,P.X].TileOverlay = toRoad then
-    gTerrain.RemRoad(P)
-  else
-  if gTerrain.Land[P.Y,P.X].TileOverlay <> toNone then
-    gTerrain.SetOverlay(P, toNone, True);
-
-  if gTerrain.TileIsCornField(P) or gTerrain.TileIsWineField(P) then
-    gTerrain.RemField(P);
 end;
 
 
@@ -415,15 +433,29 @@ end;
 
 
 procedure TKMMapEditor.ChangeOwner(aChangeOwnerForAll: Boolean);
-var P: TKMPoint;
+var
+  P: TKMPoint;
+  changed, checkPointAdded: Boolean;
 begin
+  checkPointAdded := False;
   P := gGameCursor.Cell;
   //Fisrt try to change owner of object on tile
-  if not ChangeObjectOwner(gMySpectator.HitTestCursorWGroup, gMySpectator.HandID) or aChangeOwnerForAll then
+  changed := ChangeObjectOwner(gMySpectator.HitTestCursorWGroup, gMySpectator.HandID);
+  if not changed or aChangeOwnerForAll then
     //then try to change owner tile (road/field/wine)
     if ((gTerrain.Land[P.Y, P.X].TileOverlay = toRoad) or (gTerrain.Land[P.Y, P.X].CornOrWine <> 0))
       and (gTerrain.Land[P.Y, P.X].TileOwner <> gMySpectator.HandID) then
+    begin
       gTerrain.Land[P.Y, P.X].TileOwner := gMySpectator.HandID;
+      if not changed then
+      begin
+        fHistory.MakeCheckpoint(caTerrain, 'Change tile owner');
+        checkPointAdded := True;
+      end;
+      changed := True;
+    end;
+  if not checkPointAdded and changed then
+    fHistory.MakeCheckpoint(caAll, 'Change object owner');
 end;
 
 
@@ -526,7 +558,7 @@ begin
   begin
     Obj := gMySpectator.HitTestCursor(True);
     if Obj is TKMUnit then
-      gHands.RemAnyUnit(TKMUnit(Obj).CurrPosition);
+      gHands.RemAnyUnit(TKMUnit(Obj).CurrPosition, True);
   end else
   if gTerrain.CanPlaceUnit(P, TKMUnitType(gGameCursor.Tag1)) then
   begin
@@ -573,7 +605,8 @@ begin
                               end;
                 cmHouses:     if gMySpectator.Hand.CanAddHousePlan(P, TKMHouseType(gGameCursor.Tag1)) then
                               begin
-                                gMySpectator.Hand.AddHouse(TKMHouseType(gGameCursor.Tag1), P.X, P.Y, true);
+                                gMySpectator.Hand.AddHouse(TKMHouseType(gGameCursor.Tag1), P.X, P.Y, True);
+                                fHistory.MakeCheckpoint(caHouses, 'Add house');
                                 //Holding shift allows to place that house multiple times
                                 if not (ssShift in gGameCursor.SState) then
                                 begin

@@ -525,7 +525,7 @@ begin
   if fGameMode = gmMapEd then
   begin
     //Mission loader needs to read the data into MapEd (e.g. FOW revealers)
-    fMapEditor := TKMMapEditor.Create(fTerrainPainter);
+    fMapEditor := TKMMapEditor.Create(fTerrainPainter, fMapEditorInterface.UpdateHistory);
     fMapEditor.DetectAttachedFiles(aMissionFile);
   end;
 
@@ -1180,7 +1180,7 @@ begin
   fMissionFileSP := '';
   fSaveFile := '';
 
-  fMapEditor := TKMMapEditor.Create(fTerrainPainter);
+  fMapEditor := TKMMapEditor.Create(fTerrainPainter, fMapEditorInterface.UpdateHistory);
   fMapEditor.MissionDefSavePath := fGameName + '.dat';
   gTerrain.MakeNewMap(aSizeX, aSizeY, True);
   fTerrainPainter.InitEmpty;
