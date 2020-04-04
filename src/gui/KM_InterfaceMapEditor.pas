@@ -87,6 +87,9 @@ type
     procedure ExecuteSubMenuAction(aIndex: Byte);
     procedure Update_Label_Coordinates;
     procedure MapTypeChanged(aIsMultiplayer: Boolean);
+
+    procedure Refresh;
+    procedure UnRedoClick(Sender: TObject);
   protected
     MinimapView: TKMMinimapView;
     Label_Coordinates: TKMLabel;
@@ -182,19 +185,19 @@ begin
   Button_PlayerSelect[0].Down := True; //First player selected by default
 
   //Button_TerrainUndo := TKMButton.Create(Panel_Terrain, Panel_Terrain.Width - 20, 0, 10, SMALL_TAB_H + 4, '<', bsGame);
-  Button_Undo := TKMButtonFlat.Create(Panel_Main, MAPED_TOOLBAR_WIDTH - 44 - 33 - 34 + TB_PAD, 227, 15, SMALL_TAB_H + 4, 0);
+  Button_Undo := TKMButtonFlat.Create(Panel_Main, MAPED_TOOLBAR_WIDTH - 44 - 33 - 32 + TB_PAD, 227, 15, 32, 0);
   Button_Undo.Caption := '<';
   Button_Undo.CapOffsetY := -10;
   Button_Undo.CapColor := icGreen;
   Button_Undo.Hint := gResTexts[TX_MAPED_UNDO_HINT]+ ' (''Ctrl + Z'')';
-//  Button_Undo.OnClick := UnRedoClick;
+  Button_Undo.OnClick := UnRedoClick;
   //Button_TerrainRedo := TKMButton.Create(Panel_Terrain, Panel_Terrain.Width - 10, 0, 10, SMALL_TAB_H + 4, '>', bsGame);
-  Button_Redo := TKMButtonFlat.Create(Panel_Main, MAPED_TOOLBAR_WIDTH - 44 - 33 - 17 + TB_PAD, 227, 15, SMALL_TAB_H + 4, 0);
+  Button_Redo := TKMButtonFlat.Create(Panel_Main, MAPED_TOOLBAR_WIDTH - 44 - 33 - 16 + TB_PAD, 227, 15, 32, 0);
   Button_Redo.Caption := '>';
   Button_Redo.CapOffsetY := -10;
   Button_Redo.CapColor := icGreen;
   Button_Redo.Hint := gResTexts[TX_MAPED_REDO_HINT] + ' (''Ctrl + Y'' or ''Ctrl + Shift + Z'')';
-//  Button_Redo.OnClick := UnRedoClick;
+  Button_Redo.OnClick := UnRedoClick;
 
   Button_ChangeOwner := TKMButtonFlat.Create(Panel_Main, MAPED_TOOLBAR_WIDTH - 44 - 33 + TB_PAD, 190, 32, 32, 662);
   Button_ChangeOwner.Down := False;
@@ -388,6 +391,8 @@ begin
 
   Button_ChangeOwner.Down := gGameCursor.Mode = cmPaintBucket;
   Button_UniversalEraser.Down := gGameCursor.Mode = cmUniversalEraser;
+
+  Refresh;
 end;
 
   
@@ -540,6 +545,18 @@ end;
 procedure TKMapEdInterface.UniversalEraser_Click(Sender: TObject);
 begin
   SetUniversalEraserMode(not Button_UniversalEraser.Down);
+end;
+
+
+procedure TKMapEdInterface.UnRedoClick(Sender: TObject);
+begin
+  if Sender = Button_Undo then
+    gGame.MapEditor.History.Undo;
+
+  if Sender = Button_Redo then
+    gGame.MapEditor.History.Redo;
+
+  Refresh;
 end;
 
 
@@ -837,6 +854,23 @@ begin
   if Key = gResKeys[SC_MAPEDIT_PAINT_BUCKET].Key then
     ChangeOwner_Click(Button_ChangeOwner);
 
+  if (ssCtrl in Shift) and (Key = Ord('Y')) then
+  begin
+    gGame.MapEditor.History.Redo; // Ctrl+Y = Redo
+    aHandled := True;
+  end;
+
+  if (ssCtrl in Shift) and (Key = Ord('Z')) then
+  begin
+    if ssShift in Shift then
+      gGame.MapEditor.History.Redo //Ctrl+Shift+Z = Redo
+    else
+      gGame.MapEditor.History.Undo; //Ctrl+Z = Undo
+    aHandled := True;
+  end;
+
+  Refresh;
+
   gGameCursor.SState := Shift; // Update Shift state on KeyUp
 end;
 
@@ -963,6 +997,13 @@ begin
   end;
 
   Update_Label_Coordinates;
+end;
+
+
+procedure TKMapEdInterface.Refresh;
+begin
+  Button_Undo.Enabled := gGame.MapEditor.History.CanUndo;
+  Button_Redo.Enabled := gGame.MapEditor.History.CanRedo;
 end;
 
 

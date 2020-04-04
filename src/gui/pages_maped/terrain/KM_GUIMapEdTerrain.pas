@@ -29,7 +29,7 @@ type
     fGuiOverlays: TKMMapEdTerrainOverlays;
 
     procedure PageChange(Sender: TObject);
-    procedure UnRedoClick(Sender: TObject);
+//    procedure UnRedoClick(Sender: TObject);
   protected
     Panel_Terrain: TKMPanel;
     Button_Terrain: array [TKMTerrainTab] of TKMButton;
@@ -125,22 +125,22 @@ end;
 
 procedure TKMMapEdTerrain.KeyUp(Key: Word; Shift: TShiftState; var aHandled: Boolean);
 begin
-  if Visible then
-  begin
-//    if (ssCtrl in Shift) and (Key = Ord('Y')) then
-//    begin
-//      UnRedoClick(Button_TerrainRedo); //Ctrl+Y = Redo
-//      aHandled := True;
-//    end;
-//    if (ssCtrl in Shift) and (Key = Ord('Z')) then
-//    begin
-//      if ssShift in Shift then
-//        UnRedoClick(Button_TerrainRedo) //Ctrl+Shift+Z = Redo
-//      else
-//        UnRedoClick(Button_TerrainUndo); //Ctrl+Z = Undo
-//      aHandled := True;
-//    end;
-  end;
+//  if Visible then
+//  begin
+////    if (ssCtrl in Shift) and (Key = Ord('Y')) then
+////    begin
+////      UnRedoClick(Button_TerrainRedo); //Ctrl+Y = Redo
+////      aHandled := True;
+////    end;
+////    if (ssCtrl in Shift) and (Key = Ord('Z')) then
+////    begin
+////      if ssShift in Shift then
+////        UnRedoClick(Button_TerrainRedo) //Ctrl+Shift+Z = Redo
+////      else
+////        UnRedoClick(Button_TerrainUndo); //Ctrl+Z = Undo
+////      aHandled := True;
+////    end;
+//  end;
   fGuiObjects.KeyUp(Key, Shift, aHandled);
 end;
 
@@ -188,17 +188,17 @@ begin
 end;
 
 
-procedure TKMMapEdTerrain.UnRedoClick(Sender: TObject);
-begin
-//  if Sender = Button_TerrainUndo then
-//    gGame.TerrainPainter.Undo;
-//
-//  if Sender = Button_TerrainRedo then
-//    gGame.TerrainPainter.Redo;
-//
-//  Button_TerrainUndo.Enabled := gGame.TerrainPainter.CanUndo;
-//  Button_TerrainRedo.Enabled := gGame.TerrainPainter.CanRedo;
-end;
+//procedure TKMMapEdTerrain.UnRedoClick(Sender: TObject);
+//begin
+////  if Sender = Button_TerrainUndo then
+////    gGame.TerrainPainter.Undo;
+////
+////  if Sender = Button_TerrainRedo then
+////    gGame.TerrainPainter.Redo;
+////
+////  Button_TerrainUndo.Enabled := gGame.TerrainPainter.CanUndo;
+////  Button_TerrainRedo.Enabled := gGame.TerrainPainter.CanRedo;
+//end;
 
 
 procedure TKMMapEdTerrain.Show(aTab: TKMTerrainTab);

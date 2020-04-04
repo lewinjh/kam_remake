@@ -13,11 +13,11 @@ type
   //Terrain helper that is used to paint terrain types in Map Editor
   TKMTerrainPainter = class
   private
-    fUndoPos: Byte;
-    fUndos: array [0..MAX_UNDO-1] of record
-      HasData: Boolean;
-      Data: array of array of TKMUndoTile;
-    end;
+//    fUndoPos: Byte;
+//    fUndos: array [0..MAX_UNDO-1] of record
+//      HasData: Boolean;
+//      Data: array of array of TKMUndoTile;
+//    end;
 
     // Temp data, do not saved
     fUseTempLand: Boolean;
@@ -52,7 +52,7 @@ type
     function GetTileOwnCornersTKinds(aCell: TKMPoint): TKMTerrainKindsArray;
     function GetTileLandNodeTKinds(aCell: TKMPoint): TKMTerrainKindsArray;
     function GetTileCornersTKinds(aCell: TKMPoint; aGetOnlyTileCornersTK: Boolean = False; aGetOnlyLandNodeTK: Boolean = False): TKMTerrainKindsArray;
-    procedure CheckpointToTerrain;
+//    procedure CheckpointToTerrain;
     procedure BrushTile(const X, Y: Integer);
     procedure BrushTerrainTile(const X, Y: Integer; aTerKind: TKMTerrainKind);
     procedure MagicBrush(const X,Y: Integer); overload;
@@ -1785,11 +1785,11 @@ end;
 
 
 procedure TKMTerrainPainter.InitSize(X, Y: Word);
-var
-  I: Integer;
+//var
+//  I: Integer;
 begin
-  for I := 0 to High(fUndos) do
-    SetLength(fUndos[I].Data, Y+1, X+1);
+//  for I := 0 to High(fUndos) do
+//    SetLength(fUndos[I].Data, Y+1, X+1);
 
   fBrushAreaTerKindCnt := 0;
 
@@ -2079,39 +2079,39 @@ end;
 //end;
 
 
-procedure TKMTerrainPainter.CheckpointToTerrain;
-var
-  I, J, L: Integer;
-begin
-  for I := 1 to gTerrain.MapY do
-    for J := 1 to gTerrain.MapX do
-      with fUndos[fUndoPos] do
-      begin
-        gTerrain.Land[I,J].BaseLayer.Terrain   := Data[I,J].BaseLayer.Terrain;
-        gTerrain.Land[I,J].BaseLayer.Rotation  := Data[I,J].BaseLayer.Rotation;
-        gTerrain.Land[I,J].BaseLayer.Corners   := Data[I,J].BaseLayer.Corners;
-
-        gTerrain.Land[I,J].LayersCnt           := Data[I,J].LayersCnt;
-        gTerrain.Land[I,J].Height              := Data[I,J].Height;
-        gTerrain.Land[I,J].Obj                 := Data[I,J].Obj;
-        gTerrain.Land[I,J].IsCustom            := Data[I,J].IsCustom;
-        gTerrain.Land[I,J].BlendingLvl         := Data[I,J].BlendingLvl;
-        LandTerKind[I,J].TerKind               := Data[I,J].TerKind;
-        LandTerKind[I,J].Tiles                 := Data[I,J].Tiles;
-        LandTerKind[I,J].HeightAdd             := Data[I,J].HeightAdd;
-        gTerrain.Land[I,J].TileOverlay         := Data[I,J].TileOverlay;
-        for L := 0 to 2 do
-        begin
-          gTerrain.Land[I,J].Layer[L].Terrain  := Data[I,J].Layer[L].Terrain;
-          gTerrain.Land[I,J].Layer[L].Rotation := Data[I,J].Layer[L].Rotation;
-          gTerrain.Land[I,J].Layer[L].Corners  := Data[I,J].Layer[L].Corners;
-        end;
-      end;
-
-  //Update derived fields (lighting)
-  gTerrain.UpdateLighting(gTerrain.MapRect);
-  gTerrain.UpdatePassability(gTerrain.MapRect);
-end;
+//procedure TKMTerrainPainter.CheckpointToTerrain;
+//var
+//  I, J, L: Integer;
+//begin
+//  for I := 1 to gTerrain.MapY do
+//    for J := 1 to gTerrain.MapX do
+//      with fUndos[fUndoPos] do
+//      begin
+//        gTerrain.Land[I,J].BaseLayer.Terrain   := Data[I,J].BaseLayer.Terrain;
+//        gTerrain.Land[I,J].BaseLayer.Rotation  := Data[I,J].BaseLayer.Rotation;
+//        gTerrain.Land[I,J].BaseLayer.Corners   := Data[I,J].BaseLayer.Corners;
+//
+//        gTerrain.Land[I,J].LayersCnt           := Data[I,J].LayersCnt;
+//        gTerrain.Land[I,J].Height              := Data[I,J].Height;
+//        gTerrain.Land[I,J].Obj                 := Data[I,J].Obj;
+//        gTerrain.Land[I,J].IsCustom            := Data[I,J].IsCustom;
+//        gTerrain.Land[I,J].BlendingLvl         := Data[I,J].BlendingLvl;
+//        LandTerKind[I,J].TerKind               := Data[I,J].TerKind;
+//        LandTerKind[I,J].Tiles                 := Data[I,J].Tiles;
+//        LandTerKind[I,J].HeightAdd             := Data[I,J].HeightAdd;
+//        gTerrain.Land[I,J].TileOverlay         := Data[I,J].TileOverlay;
+//        for L := 0 to 2 do
+//        begin
+//          gTerrain.Land[I,J].Layer[L].Terrain  := Data[I,J].Layer[L].Terrain;
+//          gTerrain.Land[I,J].Layer[L].Rotation := Data[I,J].Layer[L].Rotation;
+//          gTerrain.Land[I,J].Layer[L].Corners  := Data[I,J].Layer[L].Corners;
+//        end;
+//      end;
+//
+//  //Update derived fields (lighting)
+//  gTerrain.UpdateLighting(gTerrain.MapRect);
+//  gTerrain.UpdatePassability(gTerrain.MapRect);
+//end;
 
 
 procedure TKMTerrainPainter.Eyedropper(const aLoc: TKMPoint);

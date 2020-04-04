@@ -280,7 +280,7 @@ uses
   KM_PathFindingAStarOld, KM_PathFindingAStarNew, KM_PathFindingJPS,
   KM_Projectiles, KM_AIFields, KM_AIArmyEvaluation,
   KM_Main, KM_GameApp, KM_RenderPool, KM_GameInfo, KM_GameClasses,
-  KM_Terrain, KM_HandsCollection, KM_HandSpectator,
+  KM_Terrain, KM_HandsCollection, KM_HandSpectator, KM_MapEditorHistory,
   KM_MissionScript, KM_MissionScript_Standard, KM_GameInputProcess_Multi, KM_GameInputProcess_Single,
   KM_Resource, KM_ResCursors, KM_ResSound, KM_InterfaceDefaults, KM_Supervisor,
   KM_Log, KM_ScriptingEvents, KM_Saves, KM_FileIO, KM_CommonUtils, KM_RandomChecks, KM_DevPerfLog, KM_DevPerfLogTypes;
@@ -1184,7 +1184,7 @@ begin
   fMapEditor.MissionDefSavePath := fGameName + '.dat';
   gTerrain.MakeNewMap(aSizeX, aSizeY, True);
   fTerrainPainter.InitEmpty;
-  fTerrainPainter.MakeCheckpoint;
+  fMapEditor.History.MakeCheckpoint(caAll, 'Initial checkpoint after creation');
   fMapEditor.IsNewMap := True;
 
   gHands.AddPlayers(MAX_HANDS); //Create MAX players

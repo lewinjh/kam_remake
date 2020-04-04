@@ -132,8 +132,6 @@ type
       GroupMemberCount: Integer;
       GroupColumns: Integer;
       GroupOrder: TKMMapEdOrder;
-//      CarryWare: TKMWareType;
-//      CarryCount: Integer;
     end;
   public
     constructor Create(const aCaption: string);
@@ -258,9 +256,9 @@ begin
 
   SetLength(fData, gTerrain.MapY, gTerrain.MapX);
 
-  for I := 0 to gTerrain.MapY-1 do
-  for K := 0 to gTerrain.MapX-1 do
-    fData[I,K] := MakeUndoTile(gTerrain.Land[I,K], gGame.TerrainPainter.LandTerKind[I,K]);
+  for I := 1 to gTerrain.MapY do
+  for K := 1 to gTerrain.MapX do
+    fData[I-1,K-1] := MakeUndoTile(gTerrain.Land[I,K], gGame.TerrainPainter.LandTerKind[I,K]);
 end;
 
 
@@ -322,7 +320,7 @@ var
 begin
   for I := 0 to gTerrain.MapY-1 do
   for K := 0 to gTerrain.MapX-1 do
-    RestoreTileFromUndo(gTerrain.Land[I,K], gGame.TerrainPainter.LandTerKind[I,K], fData[I,K]);
+    RestoreTileFromUndo(gTerrain.Land[I+1,K+1], gGame.TerrainPainter.LandTerKind[I+1,K+1], fData[I,K]);
 
   gTerrain.UpdatePassability(gTerrain.MapRect);
   gTerrain.UpdateLighting(gTerrain.MapRect);
@@ -524,7 +522,7 @@ begin
     begin
       fUnits[L].UnitType := U.UnitType;
       fUnits[L].Position := U.CurrPosition;
-      fUnits[L].Owner := I;
+      fUnits[L].Owner := PLAYER_ANIMAL;
 
       fUnits[L].Condition := U.Condition;
 
@@ -831,6 +829,10 @@ procedure TKMMapEditorHistory.Undo;
 var
   prev: Integer;
 begin
+  if not CanUndo then Exit;
+
+  gMySpectator.Selected := nil; // Reset selection
+
   // Find previous state of area we are undoing ("Initial" state at 0 being our last chance)
   prev := fCheckpointPos - 1;
   while prev > 0 do
@@ -855,6 +857,10 @@ procedure TKMMapEditorHistory.Redo;
 var
   next: Integer;
 begin
+  if not CanRedo then Exit;
+
+  gMySpectator.Selected := nil; // Reset selection
+  
   next := fCheckpointPos + 1;
 
   Assert(next <= fCheckpoints.Count - 1);

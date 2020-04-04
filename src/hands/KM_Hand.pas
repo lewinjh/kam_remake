@@ -233,7 +233,7 @@ implementation
 uses
   Classes, SysUtils, KromUtils, Math, TypInfo,
   KM_GameApp, KM_GameCursor, KM_Game, KM_Terrain, KM_HouseBarracks, KM_HouseTownHall,
-  KM_HandsCollection, KM_Sound, KM_AIFields,
+  KM_HandsCollection, KM_Sound, KM_AIFields, KM_MapEditorHistory,
   KM_Resource, KM_ResSound, KM_ResTexts, KM_ResMapElements, KM_ScriptingEvents,
   KM_GameTypes, KM_CommonUtils;
 
@@ -261,6 +261,9 @@ function TKMHandCommon.AddUnit(aUnitType: TKMUnitType; const aLoc: TKMPoint): TK
 begin
   //Animals are autoplaced by default
   Result := fUnits.AddUnit(fID, aUnitType, aLoc, True);
+
+  if gGame.IsMapEditor then
+    gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Add animal');
 end;
 
 
@@ -442,6 +445,9 @@ begin
       //The event is "OnWarriorEquipped" not "OnWarriorCreated".
       //fScriptingESA.ProcWarriorEquipped(Result, G);
     end;
+
+  if gGame.IsMapEditor then
+    gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Add unit');
 end;
 
 
@@ -535,6 +541,9 @@ begin
   //Group can be nil if it fails to be placed on terrain (e.g. because of terrain height passability)
   if Result <> nil then
     Result.OnGroupDied := GroupDied;
+
+  if gGame.IsMapEditor then
+    gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Add unit group');
 
   //Units will be added to statistic inside the function for some units may not fit on map
 end;

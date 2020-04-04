@@ -104,7 +104,7 @@ uses
   KromUtils,
   KM_Supervisor,
   KM_Game, KM_Terrain, KM_AIFields,
-  KM_UnitsCollection,
+  KM_UnitsCollection, KM_MapEditorHistory,
   KM_Resource, KM_ResUnits,
   KM_Log, KM_CommonUtils, KM_PerfLog, KM_DevPerfLog, KM_DevPerfLogTypes;
 
@@ -870,6 +870,8 @@ begin
   for I := 0 to fCount - 1 do
     fHandsList[I].RemUnit(Position);
   fPlayerAnimals.RemUnit(Position);
+
+  gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Remove unit');
 end;
 
 
