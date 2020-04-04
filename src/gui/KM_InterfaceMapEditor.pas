@@ -91,6 +91,8 @@ type
     MinimapView: TKMMinimapView;
     Label_Coordinates: TKMLabel;
     Button_PlayerSelect: array [0..MAX_HANDS-1] of TKMFlatButtonShape; //Animals are common for all
+    Button_History: TKMButtonFlat;
+    Button_Undo, Button_Redo: TKMButtonFlat;
     Button_ChangeOwner: TKMButtonFlat;
     Button_UniversalEraser: TKMButtonFlat;
 
@@ -178,6 +180,21 @@ begin
     Button_PlayerSelect[I].OnClick := Player_ActiveClick;
   end;
   Button_PlayerSelect[0].Down := True; //First player selected by default
+
+  //Button_TerrainUndo := TKMButton.Create(Panel_Terrain, Panel_Terrain.Width - 20, 0, 10, SMALL_TAB_H + 4, '<', bsGame);
+  Button_Undo := TKMButtonFlat.Create(Panel_Main, MAPED_TOOLBAR_WIDTH - 44 - 33 - 34 + TB_PAD, 227, 15, SMALL_TAB_H + 4, 0);
+  Button_Undo.Caption := '<';
+  Button_Undo.CapOffsetY := -10;
+  Button_Undo.CapColor := icGreen;
+  Button_Undo.Hint := gResTexts[TX_MAPED_UNDO_HINT]+ ' (''Ctrl + Z'')';
+//  Button_Undo.OnClick := UnRedoClick;
+  //Button_TerrainRedo := TKMButton.Create(Panel_Terrain, Panel_Terrain.Width - 10, 0, 10, SMALL_TAB_H + 4, '>', bsGame);
+  Button_Redo := TKMButtonFlat.Create(Panel_Main, MAPED_TOOLBAR_WIDTH - 44 - 33 - 17 + TB_PAD, 227, 15, SMALL_TAB_H + 4, 0);
+  Button_Redo.Caption := '>';
+  Button_Redo.CapOffsetY := -10;
+  Button_Redo.CapColor := icGreen;
+  Button_Redo.Hint := gResTexts[TX_MAPED_REDO_HINT] + ' (''Ctrl + Y'' or ''Ctrl + Shift + Z'')';
+//  Button_Redo.OnClick := UnRedoClick;
 
   Button_ChangeOwner := TKMButtonFlat.Create(Panel_Main, MAPED_TOOLBAR_WIDTH - 44 - 33 + TB_PAD, 190, 32, 32, 662);
   Button_ChangeOwner.Down := False;

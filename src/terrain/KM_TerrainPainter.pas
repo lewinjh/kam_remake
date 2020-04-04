@@ -120,12 +120,12 @@ type
 
     class function GetRandomTile(aTerrainKind: TKMTerrainKind; aSkipRandom: Boolean = False): Word;
 
-    function CanUndo: Boolean;
-    function CanRedo: Boolean;
+//    function CanUndo: Boolean;
+//    function CanRedo: Boolean;
 
-    procedure MakeCheckpoint;
-    procedure Undo;
-    procedure Redo;
+//    procedure MakeCheckpoint;
+//    procedure Undo;
+//    procedure Redo;
 
     procedure UpdateStateIdle;
     procedure UpdateState;
@@ -240,7 +240,7 @@ const
 implementation
 uses
   KM_Game, KM_GameCursor, KM_Resource, KM_Log, KM_CommonUtils, KM_Utils,
-  KM_ResSprites, KM_GUIMapEdTerrainBrushes;
+  KM_ResSprites, KM_GUIMapEdTerrainBrushes, KM_MapEditorHistory, KM_ResTexts;
 
 
 type
@@ -521,7 +521,7 @@ begin
     end;
 
   if aMakeCheckpoint then
-    MakeCheckpoint;
+    gGame.MapEditor.History.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_BRUSH_FIX_TERRAIN]);
 end;
 
 
@@ -1592,7 +1592,7 @@ begin
                       end;
                   end;
       end;
-  MakeCheckpoint;
+  gGame.MapEditor.History.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_MAGIC_WATER]);
 end;
 
 
@@ -1894,7 +1894,7 @@ begin
     GenerateAddnData;
   end;
 
-  MakeCheckpoint;
+  gGame.MapEditor.History.MakeCheckpoint(caTerrain, 'Initial terrain load');
 end;
 
 
@@ -1997,86 +1997,86 @@ begin
 end;
 
 
-procedure TKMTerrainPainter.MakeCheckpoint;
-
-var
-  I, J, L: Integer;
-begin
-  if not gGame.IsMapEditor then Exit;
-
-  //Get next pos in circular buffer
-  fUndoPos := (fUndoPos + 1) mod MAX_UNDO;
-
-  //Store new checkpoint
-  for I := 1 to gTerrain.MapY do
-    for J := 1 to gTerrain.MapX do
-      with fUndos[fUndoPos] do
-      begin
-        Data[I,J].BaseLayer.Terrain   := gTerrain.Land[I,J].BaseLayer.Terrain;
-        Data[I,J].BaseLayer.Rotation  := gTerrain.Land[I,J].BaseLayer.Rotation;
-        Data[I,J].BaseLayer.Corners   := gTerrain.Land[I,J].BaseLayer.Corners;
-
-        Data[I,J].LayersCnt   := gTerrain.Land[I,J].LayersCnt;
-        Data[I,J].Height      := gTerrain.Land[I,J].Height;
-        Data[I,J].Obj         := gTerrain.Land[I,J].Obj;
-        Data[I,J].IsCustom    := gTerrain.Land[I,J].IsCustom;
-        Data[I,J].BlendingLvl := gTerrain.Land[I,J].BlendingLvl;
-        Data[I,J].TerKind     := LandTerKind[I,J].TerKind;
-        Data[I,J].Tiles       := LandTerKind[I,J].Tiles;
-        Data[I,J].HeightAdd   := LandTerKind[I,J].HeightAdd;
-        Data[I,J].TileOverlay := gTerrain.Land[I,J].TileOverlay;
-        for L := 0 to 2 do
-        begin
-          Data[I,J].Layer[L].Terrain   := gTerrain.Land[I,J].Layer[L].Terrain;
-          Data[I,J].Layer[L].Rotation  := gTerrain.Land[I,J].Layer[L].Rotation;
-          Data[I,J].Layer[L].Corners   := gTerrain.Land[I,J].Layer[L].Corners;
-        end;
-      end;
-  fUndos[fUndoPos].HasData := True;
-
-  //Mark next checkpoint pos as invalid, so we can't Redo to it
-  fUndos[(fUndoPos + 1) mod MAX_UNDO].HasData := False;
-end;
-
-
-function TKMTerrainPainter.CanUndo: Boolean;
-begin
-  Result := fUndos[(fUndoPos - 1 + MAX_UNDO) mod MAX_UNDO].HasData;
-end;
+//procedure TKMTerrainPainter.MakeCheckpoint;
+//
+//var
+//  I, J, L: Integer;
+//begin
+//  if not gGame.IsMapEditor then Exit;
+//
+//  //Get next pos in circular buffer
+//  fUndoPos := (fUndoPos + 1) mod MAX_UNDO;
+//
+//  //Store new checkpoint
+//  for I := 1 to gTerrain.MapY do
+//    for J := 1 to gTerrain.MapX do
+//      with fUndos[fUndoPos] do
+//      begin
+//        Data[I,J].BaseLayer.Terrain   := gTerrain.Land[I,J].BaseLayer.Terrain;
+//        Data[I,J].BaseLayer.Rotation  := gTerrain.Land[I,J].BaseLayer.Rotation;
+//        Data[I,J].BaseLayer.Corners   := gTerrain.Land[I,J].BaseLayer.Corners;
+//
+//        Data[I,J].LayersCnt   := gTerrain.Land[I,J].LayersCnt;
+//        Data[I,J].Height      := gTerrain.Land[I,J].Height;
+//        Data[I,J].Obj         := gTerrain.Land[I,J].Obj;
+//        Data[I,J].IsCustom    := gTerrain.Land[I,J].IsCustom;
+//        Data[I,J].BlendingLvl := gTerrain.Land[I,J].BlendingLvl;
+//        Data[I,J].TerKind     := LandTerKind[I,J].TerKind;
+//        Data[I,J].Tiles       := LandTerKind[I,J].Tiles;
+//        Data[I,J].HeightAdd   := LandTerKind[I,J].HeightAdd;
+//        Data[I,J].TileOverlay := gTerrain.Land[I,J].TileOverlay;
+//        for L := 0 to 2 do
+//        begin
+//          Data[I,J].Layer[L].Terrain   := gTerrain.Land[I,J].Layer[L].Terrain;
+//          Data[I,J].Layer[L].Rotation  := gTerrain.Land[I,J].Layer[L].Rotation;
+//          Data[I,J].Layer[L].Corners   := gTerrain.Land[I,J].Layer[L].Corners;
+//        end;
+//      end;
+//  fUndos[fUndoPos].HasData := True;
+//
+//  //Mark next checkpoint pos as invalid, so we can't Redo to it
+//  fUndos[(fUndoPos + 1) mod MAX_UNDO].HasData := False;
+//end;
 
 
-function TKMTerrainPainter.CanRedo: Boolean;
-begin
-  Result := fUndos[(fUndoPos + 1) mod MAX_UNDO].HasData;
-end;
-
-
-procedure TKMTerrainPainter.Undo;
-var
-  Prev: Byte;
-begin
-  Prev := (fUndoPos - 1 + MAX_UNDO) mod MAX_UNDO;
-
-  if not fUndos[Prev].HasData then Exit;
-
-  fUndoPos := Prev;
-  CheckpointToTerrain;
-end;
-
-
-procedure TKMTerrainPainter.Redo;
-var
-  Next: Byte;
-begin
-  //Next pos in circular buffer
-  Next := (fUndoPos + 1) mod MAX_UNDO;
-
-  if not fUndos[Next].HasData then Exit;
-
-  fUndoPos := Next;
-
-  CheckpointToTerrain;
-end;
+//function TKMTerrainPainter.CanUndo: Boolean;
+//begin
+//  Result := fUndos[(fUndoPos - 1 + MAX_UNDO) mod MAX_UNDO].HasData;
+//end;
+//
+//
+//function TKMTerrainPainter.CanRedo: Boolean;
+//begin
+//  Result := fUndos[(fUndoPos + 1) mod MAX_UNDO].HasData;
+//end;
+//
+//
+//procedure TKMTerrainPainter.Undo;
+//var
+//  Prev: Byte;
+//begin
+//  Prev := (fUndoPos - 1 + MAX_UNDO) mod MAX_UNDO;
+//
+//  if not fUndos[Prev].HasData then Exit;
+//
+//  fUndoPos := Prev;
+//  CheckpointToTerrain;
+//end;
+//
+//
+//procedure TKMTerrainPainter.Redo;
+//var
+//  Next: Byte;
+//begin
+//  //Next pos in circular buffer
+//  Next := (fUndoPos + 1) mod MAX_UNDO;
+//
+//  if not fUndos[Next].HasData then Exit;
+//
+//  fUndoPos := Next;
+//
+//  CheckpointToTerrain;
+//end;
 
 
 procedure TKMTerrainPainter.CheckpointToTerrain;
@@ -2152,7 +2152,7 @@ begin
   end;
 
   gTerrain.UpdatePassability(aLoc);
-  MakeCheckpoint;
+  gGame.MapEditor.History.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_ROTATE_TILE]);
 end;
 
 

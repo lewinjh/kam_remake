@@ -4,7 +4,7 @@ interface
 uses
   Classes, Controls,
   KM_RenderPool, KM_TerrainPainter, KM_TerrainDeposits, KM_TerrainSelection,
-  KM_CommonClasses, KM_Defaults, KM_Points, KM_Maps;
+  KM_CommonClasses, KM_Defaults, KM_Points, KM_Maps, KM_MapEditorHistory;
 
 
 type
@@ -20,6 +20,7 @@ type
   TKMMapEditor = class
   private
     fTerrainPainter: TKMTerrainPainter;
+    fHistory: TKMMapEditorHistory;
     fDeposits: TKMDeposits;
     fSelection: TKMSelection;
     fRevealers: array [0..MAX_HANDS-1] of TKMPointTagList;
@@ -60,6 +61,7 @@ type
     property Selection: TKMSelection read fSelection;
     property Revealers[aIndex: Byte]: TKMPointTagList read GetRevealer;
     property VisibleLayers: TKMMapEdLayerSet read fVisibleLayers write fVisibleLayers;
+    property History: TKMMapEditorHistory read fHistory write fHistory;
 
     function OnlyAdvancedAIHand(aHandId: TKMHandID): Boolean;
 
@@ -83,7 +85,7 @@ implementation
 uses
   SysUtils, StrUtils, Math,
   KM_Terrain, KM_FileIO,
-  KM_AIDefensePos, 
+  KM_AIDefensePos, KM_ResTexts,
   KM_Units, KM_UnitGroup, KM_Houses, KM_HouseCollection, KM_HouseBarracks, KM_HouseTownHall, KM_HouseWoodcutters,
   KM_Game, KM_GameCursor, KM_ResMapElements, KM_ResHouses, KM_ResWares, KM_Resource, KM_ResUnits,
   KM_RenderAux, KM_Hand, KM_HandsCollection, KM_InterfaceMapEditor, KM_CommonUtils, KM_Utils;
@@ -114,6 +116,8 @@ begin
   fTerrainPainter := aTerrainPainter;
   fSelection := TKMSelection.Create(fTerrainPainter);
 
+  fHistory := TKMMapEditorHistory.Create;
+
   fVisibleLayers := [mlObjects, mlHouses, mlUnits, mlOverlays, mlDeposits];
 
   ResizeMapRect := KMRECT_ZERO;
@@ -127,6 +131,7 @@ destructor TKMMapEditor.Destroy;
 var
   I: Integer;
 begin
+  FreeAndNil(fHistory);
   FreeAndNil(fDeposits);
   FreeAndNil(fSelection);
 
@@ -360,7 +365,7 @@ begin
   //Delete tile object (including corn/wine objects as well)
   if (gTerrain.Land[P.Y,P.X].Obj <> OBJ_NONE) then
   begin
-    fTerrainPainter.MakeCheckpoint;
+    fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_UNIVERSAL_ERASER]);
     if gTerrain.TileIsCornField(P) and (gTerrain.GetCornStage(P) in [4,5]) then
       gTerrain.SetField(P, gTerrain.Land[P.Y,P.X].TileOwner, ftCorn, 3)  // For corn, when delete corn object reduce field stage to 3
     else if gTerrain.TileIsWineField(P) then
@@ -545,8 +550,14 @@ begin
   if not aOverMap then
   begin
     //Still need to make a checkpoint since painting has now stopped
-    if gGameCursor.Mode in [cmElevate, cmEqualize, cmBrush, cmObjects, cmTiles, cmOverlays] then
-      fTerrainPainter.MakeCheckpoint;
+    case gGameCursor.Mode of
+      cmElevate:  fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_HEIGHTS_ELEVATE]);
+      cmEqualize: fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_HEIGHTS_UNEQUALIZE]);
+      cmBrush:    fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_BRUSH]);
+      cmObjects:  fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_OBJECTS]);
+      cmTiles:    fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_HINTS_TILES]);
+      cmOverlays: fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_OVERLAYS]);
+    end;
     Exit;
   end;
 
@@ -570,10 +581,12 @@ begin
                                   gGameCursor.Mode := cmRoad;
                                 end;
                               end;
-                cmElevate, cmEqualize,
-                cmBrush, cmObjects,
-                cmTiles,
-                cmOverlays:   fTerrainPainter.MakeCheckpoint;
+                cmElevate:    fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_HEIGHTS_ELEVATE]);
+                cmEqualize:   fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_HEIGHTS_UNEQUALIZE]);
+                cmBrush:      fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_BRUSH]);
+                cmObjects:    fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_OBJECTS]);
+                cmTiles:      fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_HINTS_TILES]);
+                cmOverlays:   fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_OVERLAYS]);
                 cmMagicWater: fTerrainPainter.MagicWater(P);
                 cmEyedropper: begin
                                 fTerrainPainter.Eyedropper(P);
@@ -610,11 +623,9 @@ begin
                 cmUniversalEraser:  EraseObject(ssShift in gGameCursor.SState);
               end;
     mbRight:  case gGameCursor.Mode of
-                cmElevate,
-                cmEqualize:   begin
-                                //Actual change was made in UpdateStateIdle, we just register it is done here
-                                fTerrainPainter.MakeCheckpoint;
-                              end;
+                              //Actual change was made in UpdateStateIdle, we just register it is done here
+                cmElevate:    fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_HEIGHTS_ELEVATE]);
+                cmEqualize:   fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_HEIGHTS_UNEQUALIZE]);
                 cmObjects,
                 cmEyedropper,
                 cmRotateTile: gGameCursor.Mode := cmNone;
