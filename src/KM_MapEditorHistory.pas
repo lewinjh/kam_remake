@@ -72,6 +72,8 @@ type
   type
     TKMTerrainFieldRec = record
       Field: TKMFieldType;
+//      Terrain: Word;
+//      Obj: Word;
       Owner: TKMHandID;
       Age: Byte;
       Overlay: TKMTileOverlay;
@@ -295,8 +297,9 @@ begin
   Result.Tiles       := aPaintedTile.Tiles;
   Result.HeightAdd   := aPaintedTile.HeightAdd;
   Result.TileOverlay := aTile.TileOverlay;
-  Result.TileOwner   := aTile.TileOwner;
-  for L := 0 to 2 do
+//  Result.TileOwner   := aTile.TileOwner;
+  SetLength(Result.Layer, aTile.LayersCnt);
+  for L := 0 to aTile.LayersCnt - 1 do
   begin
     Result.Layer[L].Terrain   := aTile.Layer[L].Terrain;
     Result.Layer[L].Rotation  := aTile.Layer[L].Rotation;
@@ -322,8 +325,8 @@ begin
   aPaintedTile.Tiles        := aUndoTile.Tiles;
   aPaintedTile.HeightAdd    := aUndoTile.HeightAdd;
   aTile.TileOverlay         := aUndoTile.TileOverlay;
-  aTile.TileOwner           := aUndoTile.TileOwner;
-  for L := 0 to 2 do
+//  aTile.TileOwner           := aUndoTile.TileOwner;
+  for L := 0 to aUndoTile.LayersCnt - 1 do
   begin
     aTile.Layer[L].Terrain  := aUndoTile.Layer[L].Terrain;
     aTile.Layer[L].Rotation := aUndoTile.Layer[L].Rotation;
@@ -416,19 +419,21 @@ begin
   for I := 0 to gTerrain.MapY-1 do
   for K := 0 to gTerrain.MapX-1 do
   begin
-    P := KMPoint(K, I);
+    P := KMPoint(K+1, I+1);
     case fData[I,K].Field of
-      ftNone: gTerrain.RemField(P, True, True);
-      ftRoad: gTerrain.SetRoad(P, fData[I,K].Owner);   
+      ftNone: gTerrain.RemField(P, False, False, False);
+      ftRoad: gTerrain.Land[I+1,K+1].TileOverlay := toRoad;
       ftCorn,
-      ftWine: gTerrain.SetField(P, fData[I,K].Owner, fData[I,K].Field);
+      ftWine: gTerrain.SetFieldNoUpdate(P, fData[I,K].Owner, fData[I,K].Field);
     end;
+
     gTerrain.Land[I+1,K+1].TileOwner    := fData[I,K].Owner;
     gTerrain.Land[I+1,K+1].FieldAge     := fData[I,K].Age;
     gTerrain.Land[I+1,K+1].TileOverlay  := fData[I,K].Overlay;
   end;
 
   gTerrain.UpdatePassability(gTerrain.MapRect);
+  gTerrain.UpdateFences(gTerrain.MapRect);
 //  gTerrain.ChangeAll;
 end;
 

@@ -314,35 +314,65 @@ procedure TKMMapEditor.UpdateField(aStageIncrement: Integer; aCheckPrevCell: Boo
 var
   P: TKMPoint;
   FieldStage: Integer;
+  fieldChanged: Boolean;
+  fieldStr: string;
 begin
   if aStageIncrement = 0 then Exit;
 
   FieldStage := -1;
+  fieldChanged := False;
+  fieldStr := '';
   P := gGameCursor.Cell;
   case gGameCursor.Mode of
     cmField:  begin
                 if gTerrain.TileIsCornField(P) then
                 begin
                   if not KMSamePoint(P, gGameCursor.PrevCell) or not aCheckPrevCell then
+                  begin
                     FieldStage := (gTerrain.GetCornStage(P) + aStageIncrement + CORN_STAGES_COUNT) mod CORN_STAGES_COUNT;
-                end else if gMySpectator.Hand.CanAddFieldPlan(P, ftCorn) then
+                    fieldChanged := True;
+                    fieldStr := 'Update field';
+                  end;
+                end
+                else
+                if gMySpectator.Hand.CanAddFieldPlan(P, ftCorn) then
+                begin
                   FieldStage := 0;
-                if FieldStage >= 0 then
-                  gMySpectator.Hand.AddField(P, ftCorn, FieldStage);
+                  fieldChanged := True;
+                  fieldStr := 'Add field';
+                end;
 
-                fHistory.MakeCheckpoint(caFields, 'Add field');
+                if FieldStage >= 0 then
+                begin
+                  gMySpectator.Hand.AddField(P, ftCorn, FieldStage);
+                  if fieldChanged then
+                    fHistory.MakeCheckpoint(caFields, fieldStr);
+                end;
               end;
     cmWine:   begin
                 if gTerrain.TileIsWineField(P) then
                 begin
                   if not KMSamePoint(P, gGameCursor.PrevCell) or not aCheckPrevCell then
+                  begin
                     FieldStage := (gTerrain.GetWineStage(P) + aStageIncrement + WINE_STAGES_COUNT) mod WINE_STAGES_COUNT;
-                end else if gMySpectator.Hand.CanAddFieldPlan(P, ftWine) then
+                    fieldChanged := True;
+                    fieldStr := 'Update wine';
+                  end;
+                end
+                else
+                if gMySpectator.Hand.CanAddFieldPlan(P, ftWine) then
+                begin
                   FieldStage := 0;
-                if FieldStage >= 0 then
-                  gMySpectator.Hand.AddField(P, ftWine, FieldStage);
+                  fieldChanged := True;
+                  fieldStr := 'Add wine';
+                end;
 
-                fHistory.MakeCheckpoint(caFields, 'Add wine');
+                if FieldStage >= 0 then
+                begin
+                  gMySpectator.Hand.AddField(P, ftWine, FieldStage);
+                  if fieldChanged then
+                    fHistory.MakeCheckpoint(caFields, fieldStr);
+                end;
               end;
   end;
 end;
@@ -532,6 +562,7 @@ procedure TKMMapEditor.ProceedEraseCursorMode;
 var
   P: TKMPoint;
 begin
+  P := gGameCursor.Cell;
   gHands.RemAnyHouse(P);
   if gTerrain.Land[P.Y,P.X].TileOverlay = toRoad then
   begin

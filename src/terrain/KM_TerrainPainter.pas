@@ -6,8 +6,8 @@ uses
   KM_CommonClasses, KM_Defaults, KM_Points,
   KM_Terrain, KM_ResTileset, KM_CommonTypes, KM_MapEdTypes;
 
-const
-  MAX_UNDO = 40;
+//const
+//  MAX_UNDO = 40;
 
 type
   //Terrain helper that is used to paint terrain types in Map Editor
@@ -1894,7 +1894,7 @@ begin
     GenerateAddnData;
   end;
 
-  gGame.MapEditor.History.MakeCheckpoint(caTerrain, 'Initial terrain load');
+  gGame.MapEditor.History.MakeCheckpoint(caTerrain, 'Initial');
 end;
 
 

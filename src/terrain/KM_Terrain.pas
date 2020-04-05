@@ -126,7 +126,6 @@ type
 
     function ChooseCuttingDirection(const aLoc, aTree: TKMPoint; out CuttingPoint: TKMPointDir): Boolean;
 
-    procedure UpdateFences(const Loc: TKMPoint; CheckSurrounding: Boolean = True);
     procedure UpdateWalkConnect(const aSet: TKMWalkConnectSet; aRect: TKMRect; aDiagObjectsEffected: Boolean);
 
     procedure SetField_Init(const Loc: TKMPoint; aOwner: TKMHandID; aRemoveOverlay: Boolean = True);
@@ -163,16 +162,18 @@ type
     procedure SetRoad(const Loc: TKMPoint; aOwner: TKMHandID);
     procedure SetInitWine(const Loc: TKMPoint; aOwner: TKMHandID);
     function GetFieldType(const Loc: TKMPoint): TKMFieldType;
+    procedure SetFieldNoUpdate(const Loc: TKMPoint; aOwner: TKMHandID; aFieldType: TKMFieldType);
     procedure SetField(const Loc: TKMPoint; aOwner: TKMHandID; aFieldType: TKMFieldType; aStage: Byte = 0;
-                       aRandomAge: Boolean = False; aKeepOldObject: Boolean = False; aRemoveOverlay: Boolean = True);
+                       aRandomAge: Boolean = False; aKeepOldObject: Boolean = False; aRemoveOverlay: Boolean = True;
+                       aDoUpdate: Boolean = True);
     procedure SetHouse(const Loc: TKMPoint; aHouseType: TKMHouseType; aHouseStage: TKMHouseStage; aOwner: TKMHandID; const aFlattenTerrain: Boolean = False);
     procedure SetHouseAreaOwner(const Loc: TKMPoint; aHouseType: TKMHouseType; aOwner: TKMHandID);
 
     procedure RemovePlayer(aPlayer: TKMHandID);
     procedure RemRoad(const Loc: TKMPoint);
     procedure RemField(const Loc: TKMPoint); overload;
-    procedure RemField(const Loc: TKMPoint; aDoUpdatePassNWalk: Boolean; aDoUpdateFences: Boolean); overload;
-    procedure RemField(const Loc: TKMPoint; aDoUpdatePassNWalk: Boolean; out aUpdatePassRect: TKMRect;
+    procedure RemField(const Loc: TKMPoint; aDoUpdatePass, aDoUpdateWalk: Boolean; aDoUpdateFences: Boolean); overload;
+    procedure RemField(const Loc: TKMPoint; aDoUpdatePass, aDoUpdateWalk: Boolean; out aUpdatePassRect: TKMRect;
                        out aDiagObjectChanged: Boolean; aDoUpdateFences: Boolean); overload;
     procedure ClearPlayerLand(aPlayer: TKMHandID);
 
@@ -326,7 +327,8 @@ type
     function ObjectIsChopableTree(const Loc: TKMPoint; aStages: TKMChopableAgeSet): Boolean; overload;
     function CanWalkDiagonaly(const aFrom: TKMPoint; bX, bY: SmallInt): Boolean;
 
-    function GetCornStage(const Loc: TKMPoint): Byte; overload;
+    function GetFieldStage(const Loc: TKMPoint): Byte;
+    function GetCornStage(const Loc: TKMPoint): Byte;
     function GetWineStage(const Loc: TKMPoint): Byte;
 
     function TopHill: Byte;
@@ -341,6 +343,9 @@ type
     procedure UpdateLighting(const aRect: TKMRect);
     procedure UpdatePassability(const aRect: TKMRect); overload;
     procedure UpdatePassability(const Loc: TKMPoint); overload;
+
+    procedure UpdateFences(const aRect: TKMRect; CheckSurrounding: Boolean = True); overload;
+    procedure UpdateFences(const Loc: TKMPoint; CheckSurrounding: Boolean = True); overload;
 
     procedure IncAnimStep; //Lite-weight UpdateState for MapEd
     property AnimStep: Cardinal read fAnimStep;
@@ -796,7 +801,7 @@ begin
   DoRemField := (aType <> -1)
     and (TileIsCornField(Loc) or TileIsWineField(Loc));
   if DoRemField then
-    RemField(Loc, False, aPassRect, aDiagonalChanged, False);
+    RemField(Loc, False, False, aPassRect, aDiagonalChanged, False);
 
   //Apply change
   if aType <> -1 then // Do not update terrain, if -1 is passed as an aType parameter
@@ -2027,16 +2032,16 @@ begin
 end;
 
 
-procedure TKMTerrain.RemField(const Loc: TKMPoint; aDoUpdatePassNWalk: Boolean; aDoUpdateFences: Boolean);
+procedure TKMTerrain.RemField(const Loc: TKMPoint; aDoUpdatePass, aDoUpdateWalk: Boolean; aDoUpdateFences: Boolean);
 var
   updatePassRect: TKMRect;
   diagObjectChanged: Boolean;
 begin
-  RemField(Loc, aDoUpdatePassNWalk, updatePassRect, diagObjectChanged, aDoUpdateFences);
+  RemField(Loc, aDoUpdatePass, aDoUpdateWalk, updatePassRect, diagObjectChanged, aDoUpdateFences);
 end;
 
 
-procedure TKMTerrain.RemField(const Loc: TKMPoint; aDoUpdatePassNWalk: Boolean;
+procedure TKMTerrain.RemField(const Loc: TKMPoint; aDoUpdatePass, aDoUpdateWalk: Boolean;
                               out aUpdatePassRect: TKMRect; out aDiagObjectChanged: Boolean;
                               aDoUpdateFences: Boolean);
 begin
@@ -2063,13 +2068,13 @@ begin
     UpdateFences(Loc);
     
   aUpdatePassRect := KMRectGrow(KMRect(Loc),1);
-  if aDoUpdatePassNWalk then
-  begin
+
+  if aDoUpdatePass then
     UpdatePassability(aUpdatePassRect);
 
+  if aDoUpdateWalk then
     //Update affected WalkConnect's
     UpdateWalkConnect([wcWalk,wcRoad,wcWork], aUpdatePassRect, aDiagObjectChanged); //Winefields object block diagonals
-  end;
 end;
 
 
@@ -3037,8 +3042,15 @@ begin
 end;
 
 
+procedure TKMTerrain.SetFieldNoUpdate(const Loc: TKMPoint; aOwner: TKMHandID; aFieldType: TKMFieldType);
+begin
+  SetField(Loc, aOwner, aFieldType, GetFieldStage(Loc), False, False, True, False);
+end;
+
+
 procedure TKMTerrain.SetField(const Loc: TKMPoint; aOwner: TKMHandID; aFieldType: TKMFieldType; aStage: Byte = 0;
-                              aRandomAge: Boolean = False; aKeepOldObject: Boolean = False; aRemoveOverlay: Boolean = True);
+                              aRandomAge: Boolean = False; aKeepOldObject: Boolean = False; aRemoveOverlay: Boolean = True;
+                              aDoUpdate: Boolean = True);
   procedure SetLand(aFieldAge: Byte; aTerrain: Byte; aObj: Integer = -1);
   begin
     Land[Loc.Y, Loc.X].FieldAge := aFieldAge;
@@ -3139,7 +3151,8 @@ begin
     end;
   end;
 
-  SetField_Complete(Loc, aFieldType);
+  if aDoUpdate then
+    SetField_Complete(Loc, aFieldType);
 
   if (aFieldType = ftWine) then
     gScriptEvents.ProcWinefieldBuilt(aOwner, Loc.X, Loc.Y)
@@ -4431,6 +4444,16 @@ begin
 end;
 
 
+procedure TKMTerrain.UpdateFences(const aRect: TKMRect; CheckSurrounding: Boolean = True);
+var
+  I, K: Integer;
+begin
+  for I := Max(aRect.Top, 1) to Min(aRect.Bottom, fMapY - 1) do
+    for K := Max(aRect.Left, 1) to Min(aRect.Right, fMapX - 1) do
+      UpdateFences(KMPoint(K, I), CheckSurrounding);
+end;
+
+
 {Check 4 surrounding tiles, and if they are different place a fence}
 procedure TKMTerrain.UpdateFences(const Loc: TKMPoint; CheckSurrounding: Boolean = True);
   function GetFenceType: TKMFenceType;
@@ -4686,8 +4709,22 @@ begin
 end;
 
 
+function TKMTerrain.GetFieldStage(const Loc: TKMPoint): Byte;
+begin
+  Result := 0;
+  if not TileInMapCoords(Loc.X, Loc.Y) then Exit;
+
+  if TileIsCornField(Loc) then
+    Result := GetCornStage(Loc)
+  else
+  if TileIsWineField(Loc) then
+    Result := GetWineStage(Loc);
+end;
+
+
 function TKMTerrain.GetCornStage(const Loc: TKMPoint): Byte;
-var FieldAge: Byte;
+var
+  FieldAge: Byte;
 begin
   Assert(TileIsCornField(Loc));
   FieldAge := Land[Loc.Y,Loc.X].FieldAge;
@@ -4711,6 +4748,19 @@ begin
 end;
 
 
+function TKMTerrain.GetWineStage(const Loc: TKMPoint): Byte;
+begin
+  Result := 0;
+  Assert(TileIsWineField(Loc));
+  case Land[Loc.Y, Loc.X].Obj of
+    54:   Result := 0;
+    55:   Result := 1;
+    56:   Result := 2;
+    57:   Result := 3;
+  end;
+end;
+
+
 function TKMTerrain.GetFieldType(const Loc: TKMPoint): TKMFieldType;
 begin
   Result := ftNone;
@@ -4724,19 +4774,6 @@ begin
   else
   if TileIsWineField(Loc) then
     Result := ftWine;
-end;
-
-
-function TKMTerrain.GetWineStage(const Loc: TKMPoint): Byte;
-begin
-  Result := 0;
-  Assert(TileIsWineField(Loc));
-  case Land[Loc.Y, Loc.X].Obj of
-    54:   Result := 0;
-    55:   Result := 1;
-    56:   Result := 2;
-    57:   Result := 3;
-  end;
 end;
 
 

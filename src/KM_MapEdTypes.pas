@@ -19,7 +19,7 @@ type
   TKMUndoTile = packed record
     BaseLayer: TKMTerrainLayerPacked;
     LayersCnt: Byte;
-    Layer: array [0..2] of TKMTerrainLayerPacked;
+    Layer: array of TKMTerrainLayerPacked;
     Height: Byte;
     Obj: Word;
     IsCustom: Boolean;
@@ -28,7 +28,7 @@ type
     Tiles: SmallInt;
     HeightAdd: Byte;
     TileOverlay: TKMTileOverlay;
-    TileOwner: TKMHandID;
+//    TileOwner: TKMHandID;
   end;
 
   TKMPainterTile = packed record
