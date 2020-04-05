@@ -150,6 +150,7 @@ type
       Repair: Boolean;
       ClosedForWorker: Boolean;
       FlagPoint: TKMPoint;
+      PlacedOverRoad: Boolean;
       WaresIn: array [0..Ord(High(TKMWareType))] of Integer;
       WaresOut: array [0..Ord(High(TKMWareType))] of Integer;
     end;
@@ -635,6 +636,7 @@ constructor TKMCheckpointHouses.Create(const aCaption: string);
     fHouses[aCount].DeliveryMode := aHouse.DeliveryMode;
     fHouses[aCount].Repair := aHouse.BuildingRepair;
     fHouses[aCount].ClosedForWorker := aHouse.IsClosedForWorker;
+    fHouses[aCount].PlacedOverRoad := aHouse.PlacedOverRoad;
 
     if aHouse is TKMHouseWFlagPoint then
       fHouses[aCount].FlagPoint := TKMHouseWFlagPoint(aHouse).FlagPoint;
@@ -704,7 +706,12 @@ var
 begin
   // Remove all houses and apply them anew
   for I := 0 to gHands.Count - 1 do
+  begin
+    for K := 0 to gHands[I].Houses.Count - 1 do
+      if not gHands[I].Houses[K].PlacedOverRoad and gTerrain.TileHasRoad(gHands[I].Houses[K].Entrance) then
+        gTerrain.RemRoad(gHands[I].Houses[K].Entrance);
     gHands[I].Houses.Clear;
+  end;
 
   for I := 0 to High(fHouses) do
   begin
@@ -715,6 +722,7 @@ begin
     H.SetDeliveryModeInstantly(fHouses[I].DeliveryMode);
     H.BuildingRepair := fHouses[I].Repair;
     H.IsClosedForWorker := fHouses[I].ClosedForWorker;
+    H.PlacedOverRoad := fHouses[I].PlacedOverRoad;
 
     if H is TKMHouseWFlagPoint then
       TKMHouseWFlagPoint(H).FlagPoint := fHouses[I].FlagPoint;

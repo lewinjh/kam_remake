@@ -4113,6 +4113,8 @@ procedure TKMTerrain.UpdateWalkConnect(const aSet: TKMWalkConnectSet; aRect: TKM
 var
   WC: TKMWalkConnect;
 begin
+  if gGame.IsMapEditor then Exit;
+  
   aRect := KMClipRect(aRect, 1, 1, fMapX - 1, fMapY - 1);
 
   //Process all items from set
