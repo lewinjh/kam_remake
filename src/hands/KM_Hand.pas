@@ -33,7 +33,8 @@ type
     property Units: TKMUnitsCollection read fUnits;
 
     function AddUnit(aUnitType: TKMUnitType; const aLoc: TKMPoint; aMakeCheckpoint: Boolean = True): TKMUnit;
-    function RemUnit(const Position: TKMPoint): Boolean;
+    function RemUnit(const Position: TKMPoint): Boolean; overload;
+    function RemUnit(const Position: TKMPoint; out aUnitType: TKMUnitType): Boolean; overload;
     function UnitsHitTest(const aLoc: TKMPoint; const UT: TKMUnitType = utAny): TKMUnit; overload;
     function UnitsHitTest(X, Y: Integer; const UT: TKMUnitType = utAny): TKMUnit; overload;
 
@@ -236,7 +237,7 @@ uses
   Classes, SysUtils, KromUtils, Math, TypInfo,
   KM_GameApp, KM_GameCursor, KM_Game, KM_Terrain, KM_HouseBarracks, KM_HouseTownHall,
   KM_HandsCollection, KM_Sound, KM_AIFields, KM_MapEditorHistory,
-  KM_Resource, KM_ResSound, KM_ResTexts, KM_ResMapElements, KM_ScriptingEvents,
+  KM_Resource, KM_ResSound, KM_ResTexts, KM_ResMapElements, KM_ScriptingEvents, KM_ResUnits,
   KM_GameTypes, KM_CommonUtils;
 
 const
@@ -265,7 +266,8 @@ begin
   Result := fUnits.AddUnit(fID, aUnitType, aLoc, True);
 
   if gGame.IsMapEditor and aMakeCheckpoint then
-    gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Add animal');
+    gGame.MapEditor.History.MakeCheckpoint(caUnits, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_ADD_SMTH],
+                                                           [gRes.Units[aUnitType].GUIName]));
 end;
 
 
@@ -278,6 +280,14 @@ end;
 
 function TKMHandCommon.RemUnit(const Position: TKMPoint): Boolean;
 var
+  UnitType: TKMUnitType;
+begin
+  Result := RemUnit(Position, UnitType);
+end;
+
+
+function TKMHandCommon.RemUnit(const Position: TKMPoint; out aUnitType: TKMUnitType): Boolean;
+var
   U: TKMUnit;
 begin
   Assert(gGame.IsMapEditor);
@@ -287,7 +297,10 @@ begin
   Result := U <> nil;
 
   if Result then
+  begin
+    aUnitType := U.UnitType;
     fUnits.RemoveUnit(U);
+  end;
 end;
 
 
@@ -454,7 +467,8 @@ begin
     end;
 
   if gGame.IsMapEditor and aMakeCheckpoint then
-    gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Add unit');
+    gGame.MapEditor.History.MakeCheckpoint(caUnits, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_ADD_SMTH],
+                                                           [gRes.Units[aUnitType].GUIName]));
 end;
 
 
@@ -551,7 +565,8 @@ begin
     Result.OnGroupDied := GroupDied;
 
   if gGame.IsMapEditor and aMakeCheckpoint then
-    gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Add unit group');
+    gGame.MapEditor.History.MakeCheckpoint(caUnits, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_ADD_SMTH],
+                                                           [gRes.Units[aUnitType].GUIName]));
 
   //Units will be added to statistic inside the function for some units may not fit on map
 end;

@@ -34,7 +34,7 @@ type
   public
     constructor Create(const aCaption: string); overload;
     class function FactoryCreate(aArea: TKMCheckpointArea; const aCaption: string): TKMCheckpoint;
-    procedure Apply(aArea: TKMCheckpointArea = caAll); virtual; abstract;
+    procedure Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True); virtual; abstract;
     property Caption: string read fCaption;
     property Area: TKMCheckpointArea read fArea;
     function CanAdjoin(aArea: TKMCheckpointArea): Boolean; virtual;
@@ -49,7 +49,7 @@ type
     procedure RestoreTileFromUndo(var aTile: TKMTerrainTile; var aPaintedTile: TKMPainterTile; aUndoTile: TKMUndoTile);
   public
     constructor Create(const aCaption: string);
-    procedure Apply(aArea: TKMCheckpointArea = caAll); override;
+    procedure Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True); override;
   end;
 
 //  TKMCheckpointFences = class(TKMCheckpoint)
@@ -83,7 +83,7 @@ type
     fData: array of array of TKMTerrainFieldRec;
   public
     constructor Create(const aCaption: string);
-    procedure Apply(aArea: TKMCheckpointArea = caAll); override;
+    procedure Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True); override;
   end;
 
 //  TKMCheckpointEmitters = class(TKMCheckpoint)
@@ -138,7 +138,7 @@ type
     end;
   public
     constructor Create(const aCaption: string);
-    procedure Apply(aArea: TKMCheckpointArea = caAll); override;
+    procedure Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True); override;
   end;
 
   TKMCheckpointHouses = class(TKMCheckpoint)
@@ -159,7 +159,7 @@ type
     end;
   public
     constructor Create(const aCaption: string);
-    procedure Apply(aArea: TKMCheckpointArea = caAll); override;
+    procedure Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True); override;
   end;
 
 //  TKMCheckpointWaterLevel = class(TKMCheckpoint)
@@ -179,7 +179,7 @@ type
     fAreas: array [TKMCheckpointArea] of TKMCheckpoint;
   public
     constructor Create(const aCaption: string);
-    procedure Apply(aArea: TKMCheckpointArea = caAll); override;
+    procedure Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True); override;
   end;
 
   // Terrain helper that is used to undo/redo terrain changes in Map Editor
@@ -192,8 +192,10 @@ type
     fCheckpoints: TList<TKMCheckpoint>;
 
     fOnChange: TEvent;
+    fUpdateTerrainNeeded: Boolean;
 
     procedure IncCounter;
+    procedure UpdateAll;
   public
     constructor Create;
     destructor Destroy; override;
@@ -209,8 +211,8 @@ type
 
     procedure MakeCheckpoint(aArea: TKMCheckpointArea; const aCaption: string);
     procedure JumpTo(aIndex: Integer);
-    procedure Undo;
-    procedure Redo;
+    procedure Undo(aUpdateImmidiately: Boolean = True);
+    procedure Redo(aUpdateImmidiately: Boolean = True);
   end;
 
 
@@ -336,13 +338,15 @@ begin
 end;
 
 
-procedure TKMCheckpointTerrain.Apply(aArea: TKMCheckpointArea = caAll);
+procedure TKMCheckpointTerrain.Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True);
 var
   I, K: Integer;
 begin
   for I := 0 to gTerrain.MapY-1 do
   for K := 0 to gTerrain.MapX-1 do
     RestoreTileFromUndo(gTerrain.Land[I+1,K+1], gGame.TerrainPainter.LandTerKind[I+1,K+1], fData[I,K]);
+
+  if not aUpdateImmidiately then Exit;
 
   gTerrain.UpdatePassability(gTerrain.MapRect);
   gTerrain.UpdateLighting(gTerrain.MapRect);
@@ -412,7 +416,7 @@ begin
 end;
 
 
-procedure TKMCheckpointFields.Apply(aArea: TKMCheckpointArea = caAll);
+procedure TKMCheckpointFields.Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True);
 var
   I, K: Integer;
   P: TKMPoint;
@@ -421,21 +425,24 @@ begin
   for K := 0 to gTerrain.MapX-1 do
   begin
     P := KMPoint(K+1, I+1);
+
+    // Do not remove roads under houses
+    if gHands.HousesHitTest(K+1,I+1) = nil then
+      gTerrain.RemField(P, False, False, False); //Remove all fields first (without any updates)
+
     case fData[I,K].Field of
-      ftNone: gTerrain.RemField(P, False, False, False);
-      ftRoad: gTerrain.Land[I+1,K+1].TileOverlay := toRoad;
+      ftNone: ;
+      ftRoad: gTerrain.SetRoad(P, fData[I,K].Owner, False);
       ftCorn,
       ftWine: gTerrain.SetFieldNoUpdate(P, fData[I,K].Owner, fData[I,K].Field);
     end;
-
-    gTerrain.Land[I+1,K+1].TileOwner    := fData[I,K].Owner;
-    gTerrain.Land[I+1,K+1].FieldAge     := fData[I,K].Age;
-    gTerrain.Land[I+1,K+1].TileOverlay  := fData[I,K].Overlay;
+    gTerrain.Land[I+1,K+1].FieldAge := fData[I,K].Age;
   end;
+
+  if not aUpdateImmidiately then Exit;
 
   gTerrain.UpdatePassability(gTerrain.MapRect);
   gTerrain.UpdateFences(gTerrain.MapRect);
-//  gTerrain.ChangeAll;
 end;
 
 
@@ -606,7 +613,7 @@ begin
 end;
 
 
-procedure TKMCheckpointUnits.Apply(aArea: TKMCheckpointArea = caAll);
+procedure TKMCheckpointUnits.Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True);
 var
   I: Integer;
   U: TKMUnit;
@@ -716,7 +723,7 @@ begin
 end;
 
 
-procedure TKMCheckpointHouses.Apply(aArea: TKMCheckpointArea = caAll);
+procedure TKMCheckpointHouses.Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True);
 var
   I, K: Integer;
   H: TKMHouse;
@@ -819,7 +826,7 @@ begin
 end;
 
 
-procedure TKMCheckpointAll.Apply(aArea: TKMCheckpointArea = caAll);
+procedure TKMCheckpointAll.Apply(aArea: TKMCheckpointArea = caAll; aUpdateImmidiately: Boolean = True);
 var
   I: TKMCheckpointArea;
 begin
@@ -928,27 +935,41 @@ end;
 procedure TKMMapEditorHistory.JumpTo(aIndex: Integer);
 var
   I: Integer;
+  undoRedoNeeded: Boolean;
 begin
   aIndex := EnsureRange(aIndex, 0, fCheckpoints.Count - 1);
+  undoRedoNeeded := (aIndex <> fCheckpointPos);
+  fUpdateTerrainNeeded := False;
   if aIndex < fCheckpointPos then
   begin
     for I := aIndex to fCheckpointPos - 1 do
-      Undo;
+      Undo(False);
   end
   else
   if aIndex > fCheckpointPos then
     for I := fCheckpointPos to aIndex - 1 do
-      Redo;
+      Redo(False);
+
+  if undoRedoNeeded and Assigned(fOnChange) then
+    fOnChange;
+
+  // Update terrain once only after all undos/redos were done
+  if fUpdateTerrainNeeded then
+    UpdateAll;
 end;
 
 
-procedure TKMMapEditorHistory.Undo;
+procedure TKMMapEditorHistory.UpdateAll;
+begin
+  gTerrain.UpdateAll(gTerrain.MapRect);
+end;
+
+
+procedure TKMMapEditorHistory.Undo(aUpdateImmidiately: Boolean = True);
 var
   prev: Integer;
 begin
   if not CanUndo then Exit;
-
-  gMySpectator.Selected := nil; // Reset selection
 
   // Find previous state of area we are undoing ("Initial" state at 0 being our last chance)
   prev := fCheckpointPos - 1;
@@ -962,35 +983,40 @@ begin
   Assert(prev >= 0);
 
   // Apply only requested area (e.g. if we are undoing single change made to Houses at step 87 since editing start)
-  fCheckpoints[prev].Apply(fCheckpoints[fCheckpointPos].Area);
+  fCheckpoints[prev].Apply(fCheckpoints[fCheckpointPos].Area, aUpdateImmidiately);
+
+  if not aUpdateImmidiately and (fCheckpoints[fCheckpointPos].Area in [caTerrain, caFields]) then
+    fUpdateTerrainNeeded := True;
 
   Dec(fCheckpointPos);
 
   IncCounter;
 
-  if Assigned (fOnChange) then
+  if aUpdateImmidiately and Assigned(fOnChange) then
     fOnChange;
 end;
 
 
-procedure TKMMapEditorHistory.Redo;
+procedure TKMMapEditorHistory.Redo(aUpdateImmidiately: Boolean = True);
 var
   next: Integer;
 begin
   if not CanRedo then Exit;
 
-  gMySpectator.Selected := nil; // Reset selection
-  
   next := fCheckpointPos + 1;
 
   Assert(next <= fCheckpoints.Count - 1);
 
-  fCheckpoints[next].Apply;
+  fCheckpoints[next].Apply(caAll, aUpdateImmidiately);
+
+  if not aUpdateImmidiately and (fCheckpoints[fCheckpointPos].Area in [caTerrain, caFields]) then
+    fUpdateTerrainNeeded := True;
+
   fCheckpointPos := next;
 
   IncCounter;
 
-  if Assigned (fOnChange) then
+  if aUpdateImmidiately and Assigned(fOnChange) then
     fOnChange;
 end;
 

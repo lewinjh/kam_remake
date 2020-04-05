@@ -331,7 +331,7 @@ begin
                   begin
                     FieldStage := (gTerrain.GetCornStage(P) + aStageIncrement + CORN_STAGES_COUNT) mod CORN_STAGES_COUNT;
                     fieldChanged := True;
-                    fieldStr := 'Update field';
+                    fieldStr := Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_UPDATE_SMTH], [gResTexts[TX_WORD_CORN_FIELD]]);
                   end;
                 end
                 else
@@ -339,7 +339,7 @@ begin
                 begin
                   FieldStage := 0;
                   fieldChanged := True;
-                  fieldStr := 'Add field';
+                  fieldStr := Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_ADD_SMTH], [gResTexts[TX_WORD_CORN_FIELD]]);
                 end;
 
                 if FieldStage >= 0 then
@@ -356,7 +356,7 @@ begin
                   begin
                     FieldStage := (gTerrain.GetWineStage(P) + aStageIncrement + WINE_STAGES_COUNT) mod WINE_STAGES_COUNT;
                     fieldChanged := True;
-                    fieldStr := 'Update wine';
+                    fieldStr := Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_UPDATE_SMTH], [gResTexts[TX_WORD_WINE_FIELD]]);
                   end;
                 end
                 else
@@ -364,7 +364,7 @@ begin
                 begin
                   FieldStage := 0;
                   fieldChanged := True;
-                  fieldStr := 'Add wine';
+                  fieldStr := Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_ADD_SMTH], [gResTexts[TX_WORD_WINE_FIELD]]);
                 end;
 
                 if FieldStage >= 0 then
@@ -383,17 +383,19 @@ procedure TKMMapEditor.EraseObject(aEraseAll: Boolean);
 var
   Obj: TObject;
   P: TKMPoint;
-  changedFields: Boolean;
+  fieldsChanged, isCorn, isWine: Boolean;
+  removeTxID: Integer;
 begin
-  changedFields := False;
+  fieldsChanged := False;
   P := gGameCursor.Cell;
   Obj := gMySpectator.HitTestCursor(True);
+  removeTxID := -1;
 
   try
     //Delete unit/house
     if Obj is TKMUnit then
     begin
-      gHands.RemAnyUnit(TKMUnit(Obj).CurrPosition, True);
+      gHands.RemAnyUnit(TKMUnit(Obj).CurrPosition);
       if not aEraseAll then Exit;
     end
     else
@@ -403,40 +405,65 @@ begin
       if not aEraseAll then Exit;
     end;
 
+    isCorn := gTerrain.TileIsCornField(P);
+    isWine := gTerrain.TileIsWineField(P);
+
     //Delete tile object (including corn/wine objects as well)
     if (gTerrain.Land[P.Y,P.X].Obj <> OBJ_NONE) then
     begin
-      if gTerrain.TileIsCornField(P) and (gTerrain.GetCornStage(P) in [4,5]) then
-        gTerrain.SetField(P, gTerrain.Land[P.Y,P.X].TileOwner, ftCorn, 3)  // For corn, when delete corn object reduce field stage to 3
-      else if gTerrain.TileIsWineField(P) then
-        gTerrain.RemField(P)
+      if isCorn and (gTerrain.GetCornStage(P) in [4,5]) then
+      begin
+        gTerrain.SetField(P, gTerrain.Land[P.Y,P.X].TileOwner, ftCorn, 3); // For corn, when delete corn object reduce field stage to 3
+        removeTxID := TX_WORD_CORN_FIELD;
+      end
       else
+      if isWine then
+      begin
+        gTerrain.RemField(P);
+        removeTxID := TX_WORD_WINE_FIELD;
+      end
+      else
+      begin
         gTerrain.SetObject(P, OBJ_NONE);
+        removeTxID := TX_WORD_OBJECT;
+      end;
 
-      changedFields := True; // We deleted smth here
+      fieldsChanged := True; // We deleted smth here
       if not aEraseAll then Exit;
     end;
 
     //Delete tile overlay (road/corn/wine)
     if gTerrain.Land[P.Y,P.X].TileOverlay = toRoad then
     begin
+      if not fieldsChanged then
+        removeTxID := TX_WORD_ROAD;
+
       gTerrain.RemRoad(P);
-      changedFields := True;
+      fieldsChanged := True;
     end else
     if gTerrain.Land[P.Y,P.X].TileOverlay <> toNone then
     begin
+      if not fieldsChanged then
+        removeTxID := TX_WORD_OVERLAY;
+
       gTerrain.SetOverlay(P, toNone, True);
-      changedFields := True;
+      fieldsChanged := True;
     end;
 
-    if gTerrain.TileIsCornField(P) or gTerrain.TileIsWineField(P) then
+    if isCorn or isWine then
     begin
+      if not fieldsChanged then
+        removeTxID := IfThen(isCorn, TX_WORD_CORN_FIELD, TX_WORD_WINE_FIELD);
+
       gTerrain.RemField(P);
-      changedFields := True;
+      fieldsChanged := True;
     end;
   finally
-    if changedFields then
-      fHistory.MakeCheckpoint(caFields, gResTexts[TX_MAPED_UNIVERSAL_ERASER]);
+    if fieldsChanged then
+    begin
+      Assert(removeTxID <> -1);
+      fHistory.MakeCheckpoint(caFields, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_REMOVE_SMTH], [gResTexts[removeTxID]]));
+    end;
   end;
 end;
 
@@ -480,7 +507,7 @@ begin
       and (gTerrain.Land[P.Y, P.X].TileOwner <> gMySpectator.HandID) then
     begin
       gTerrain.Land[P.Y, P.X].TileOwner := gMySpectator.HandID;
-      fHistory.MakeCheckpoint(caFields, 'Change tile owner');
+      fHistory.MakeCheckpoint(caTerrain, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_CHOWNER_SMTH], [P.ToString]));
     end;
 end;
 
@@ -488,7 +515,8 @@ end;
 //Change owner for specified object
 //returns True if owner was changed successfully
 function TKMMapEditor.ChangeObjectOwner(aObject: TObject; aOwner: TKMHandID): Boolean;
-var House: TKMHouse;
+var
+  House: TKMHouse;
 begin
   Result := False;
   if (aObject = nil) then Exit;
@@ -501,7 +529,8 @@ begin
       House.OwnerUpdate(aOwner, True);
       gTerrain.SetHouseAreaOwner(House.Position, House.HouseType, aOwner); // Update minimap colors
       Result := True;
-      fHistory.MakeCheckpoint(caHouses, 'Change house owner');
+      fHistory.MakeCheckpoint(caHouses, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_CHOWNER_SMTH],
+                                               [gRes.Houses[House.HouseType].HouseName]));
     end;
   end
   else
@@ -511,7 +540,8 @@ begin
     begin
       TKMUnit(aObject).OwnerUpdate(aOwner, True);
       Result := True;
-      fHistory.MakeCheckpoint(caUnits, 'Change unit owner');
+      fHistory.MakeCheckpoint(caUnits, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_CHOWNER_SMTH],
+                                              [gRes.Units[TKMUnit(aObject).UnitType].GUIName]));
     end;
   end
   else
@@ -520,7 +550,8 @@ begin
     begin
       TKMUnitGroup(aObject).OwnerUpdate(aOwner, True);
       Result := True;
-      fHistory.MakeCheckpoint(caUnits, 'Change group owner');
+      fHistory.MakeCheckpoint(caUnits, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_CHOWNER_SMTH],
+                                              [gRes.Units[TKMUnitGroup(aObject).FlagBearer.UnitType].GUIName]));
     end
 end;
 
@@ -553,7 +584,7 @@ begin
     if gTerrain.TileIsCornField(P) or gTerrain.TileIsWineField(P) then
       gTerrain.RemField(P);
     gMySpectator.Hand.AddRoad(P);
-    fHistory.MakeCheckpoint(caFields, 'Add road');
+    fHistory.MakeCheckpoint(caFields, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_ADD_SMTH], [gResTexts[TX_WORD_ROAD]]));
   end;
 end;
 
@@ -567,24 +598,24 @@ begin
   if gTerrain.Land[P.Y,P.X].TileOverlay = toRoad then
   begin
     gTerrain.RemRoad(P);
-    fHistory.MakeCheckpoint(caFields, 'Remove road');
+    fHistory.MakeCheckpoint(caFields, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_REMOVE_SMTH], [gResTexts[TX_WORD_ROAD]]));
   end else
   if gTerrain.Land[P.Y,P.X].TileOverlay <> toNone then
   begin
     gTerrain.SetOverlay(P, toNone, True);
-    fHistory.MakeCheckpoint(caFields, 'Remove overlay');
+    fHistory.MakeCheckpoint(caFields, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_REMOVE_SMTH], [gResTexts[TX_WORD_OVERLAY]]));
   end;
 
   if gTerrain.TileIsCornField(P) then
   begin
     gTerrain.RemField(P);
-    fHistory.MakeCheckpoint(caFields, 'Remove field');
+    fHistory.MakeCheckpoint(caFields, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_REMOVE_SMTH], [gResTexts[TX_WORD_CORN_FIELD]]));
   end
   else
   if gTerrain.TileIsWineField(P) then
   begin
     gTerrain.RemField(P);
-    fHistory.MakeCheckpoint(caFields, 'Remove wine');
+    fHistory.MakeCheckpoint(caFields, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_REMOVE_SMTH], [gResTexts[TX_WORD_WINE_FIELD]]));
   end;
 end;
 
@@ -621,7 +652,7 @@ begin
   begin
     Obj := gMySpectator.HitTestCursor(True);
     if Obj is TKMUnit then
-      gHands.RemAnyUnit(TKMUnit(Obj).CurrPosition, True);
+      gHands.RemAnyUnit(TKMUnit(Obj).CurrPosition);
   end else
   if gTerrain.CanPlaceUnit(P, TKMUnitType(gGameCursor.Tag1)) then
   begin
@@ -651,7 +682,7 @@ begin
       cmBrush:    fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_BRUSH]);
       cmObjects:  fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_OBJECTS]);
       cmTiles:    fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_HINTS_TILES]);
-      cmOverlays: fHistory.MakeCheckpoint(caFields,  gResTexts[TX_MAPED_TERRAIN_OVERLAYS]);
+      cmOverlays: fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_OVERLAYS]);
     end;
     Exit;
   end;
@@ -663,7 +694,8 @@ begin
                 cmHouses:     if gMySpectator.Hand.CanAddHousePlan(P, TKMHouseType(gGameCursor.Tag1)) then
                               begin
                                 gMySpectator.Hand.AddHouse(TKMHouseType(gGameCursor.Tag1), P.X, P.Y, True);
-                                fHistory.MakeCheckpoint(caHouses, 'Add house');
+                                fHistory.MakeCheckpoint(caHouses, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_ADD_SMTH],
+                                                                         [gRes.Houses[TKMHouseType(gGameCursor.Tag1)].HouseName]));
                                 //Holding shift allows to place that house multiple times
                                 if not (ssShift in gGameCursor.SState) then
                                 begin
@@ -676,7 +708,7 @@ begin
                 cmBrush:      fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_BRUSH]);
                 cmObjects:    fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_OBJECTS]);
                 cmTiles:      fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_HINTS_TILES]);
-                cmOverlays:   fHistory.MakeCheckpoint(caFields,  gResTexts[TX_MAPED_TERRAIN_OVERLAYS]);
+                cmOverlays:   fHistory.MakeCheckpoint(caTerrain, gResTexts[TX_MAPED_TERRAIN_OVERLAYS]);
                 cmMagicWater: fTerrainPainter.MagicWater(P);
                 cmEyedropper: begin
                                 fTerrainPainter.Eyedropper(P);

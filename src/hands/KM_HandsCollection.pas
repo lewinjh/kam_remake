@@ -73,7 +73,7 @@ type
     procedure CleanUpGroupPointer(var aGroup: TKMUnitGroup);
     procedure CleanUpHousePointer(var aHouse: TKMHouse);
     function RemAnyHouse(const Position: TKMPoint): Boolean;
-    function RemAnyUnit(const Position: TKMPoint; aMakeCheckpoint: Boolean): Boolean;
+    function RemAnyUnit(const Position: TKMPoint): Boolean;
     procedure RevealForTeam(aPlayer: TKMHandID; const Pos: TKMPoint; Radius,Amount: Word);
     procedure SyncFogOfWar;
     procedure AddDefaultGoalsToAll(aMissionMode: TKMissionMode);
@@ -105,7 +105,7 @@ uses
   KM_Supervisor,
   KM_Game, KM_Terrain, KM_AIFields,
   KM_UnitsCollection, KM_MapEditorHistory,
-  KM_Resource, KM_ResUnits,
+  KM_Resource, KM_ResUnits, KM_ResTexts,
   KM_Log, KM_CommonUtils, KM_PerfLog, KM_DevPerfLog, KM_DevPerfLogTypes;
 
 
@@ -853,32 +853,34 @@ begin
   Result := H <> nil;
   if Result then
   begin
-//    H.DemolishHouse(H.Owner, True);
-//    fHandsList[H.Owner].Houses.DeleteHouseFromList(H);
     H.RemoveHouse;
 
-    gGame.MapEditor.History.MakeCheckpoint(caHouses, 'Remove house ''' + GetEnumName(TypeInfo(TKMHouseType), Integer(H.HouseType)) + '''');
+    gGame.MapEditor.History.MakeCheckpoint(caHouses, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_REMOVE_SMTH],
+                                                           [gRes.Houses[H.HouseType].HouseName]));
   end;
 end;
 
 
 //MapEd procedure to remove any unit under cursor
-function TKMHandsCollection.RemAnyUnit(const Position: TKMPoint; aMakeCheckpoint: Boolean): Boolean;
+function TKMHandsCollection.RemAnyUnit(const Position: TKMPoint): Boolean;
 var
   I: Integer;
+  UnitType: TKMUnitType;
 begin
   Assert(gGame.IsMapEditor, 'RemAnyUnit is not allowed outside of MapEditor');
 
+  UnitType := utNone;
   Result := False;
   for I := 0 to fCount - 1 do
-    Result := fHandsList[I].RemGroup(Position);
+    Result := fHandsList[I].RemGroup(Position); //We just remove group from list there, no actual unit was removed yet
   for I := 0 to fCount - 1 do
-    Result := fHandsList[I].RemUnit(Position) or Result; //Should remove Unit as well after remove group
+    Result := fHandsList[I].RemUnit(Position, UnitType) or Result; //Should remove Unit as well after remove group
 
-  Result := fPlayerAnimals.RemUnit(Position) or Result;
+  Result := fPlayerAnimals.RemUnit(Position, UnitType) or Result;
 
-  if aMakeCheckpoint and Result then
-    gGame.MapEditor.History.MakeCheckpoint(caUnits, 'Remove unit');
+  if Result then
+    gGame.MapEditor.History.MakeCheckpoint(caUnits, Format(gResTexts[TX_MAPED_HISTORY_CHPOINT_REMOVE_SMTH],
+                                                           [gRes.Units[UnitType].GUIName]));
 end;
 
 

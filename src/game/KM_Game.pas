@@ -665,7 +665,7 @@ begin
   if IsMapEditor then
   begin
     fMapEditor.History.Clear;
-    fMapEditor.History.MakeCheckpoint(caAll, 'Initial');
+    fMapEditor.History.MakeCheckpoint(caAll, gResTexts[TX_MAPED_HISTORY_CHPOINT_INITIAL]);
   end;
 
   //MissionStart goes after basesave to keep it pure (repeats on Load of basesave)
@@ -1190,7 +1190,7 @@ begin
   fMapEditor.MissionDefSavePath := fGameName + '.dat';
   gTerrain.MakeNewMap(aSizeX, aSizeY, True);
   fTerrainPainter.InitEmpty;
-  fMapEditor.History.MakeCheckpoint(caAll, 'Initial');
+  fMapEditor.History.MakeCheckpoint(caAll, gResTexts[TX_MAPED_HISTORY_CHPOINT_INITIAL]);
   fMapEditor.IsNewMap := True;
 
   gHands.AddPlayers(MAX_HANDS); //Create MAX players

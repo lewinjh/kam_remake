@@ -101,12 +101,6 @@ type
     Button_ChangeOwner: TKMButtonFlat;
     Button_UniversalEraser: TKMButtonFlat;
 
-    PopUp_History: TKMPopUpPanel;
-      ListBox_History: TKMListBox;
-      Button_History_Undo,
-      Button_History_Redo,
-      Button_History_JumpTo: TKMButton;
-
     Label_Stat: TKMLabel;
 
     Panel_Common: TKMPanel;
@@ -114,6 +108,12 @@ type
       Label_MissionName: TKMLabel;
       Image_Extra: TKMImage;
       Image_Message: TKMImage;
+
+    PopUp_History: TKMPopUpPanel;
+      ListBox_History: TKMListBox;
+      Button_History_Undo,
+      Button_History_Redo,
+      Button_History_JumpTo: TKMButton;
 
     function GetToolBarWidth: Integer; override;
   public
@@ -200,7 +200,7 @@ begin
   Button_History.TexOffsetX := -1;
   Button_History.Down := False;
   Button_History.OnClick := HistoryClick;
-//  Button_History.Hint := GetHintWHotKey(TX_MAPED_PAINT_BUCKET_CH_OWNER, SC_MAPEDIT_PAINT_BUCKET);
+  Button_History.Hint := GetHintWHotKey(TX_MAPED_HISTORY_HINT, SC_MAPEDIT_HISTORY);
 
   Button_ChangeOwner := TKMButtonFlat.Create(Panel_Main, MAPED_TOOLBAR_WIDTH - 44 - 30 + TB_PAD, 190, 30, 32, 662);
   Button_ChangeOwner.Down := False;
@@ -289,9 +289,7 @@ begin
   fGuiTerrain.GuiSelection.GuiRMGPopUp := fGuiRMG;
 
   // PopUp window will be reated last
-  PopUp_History := TKMPopUpPanel.Create(Panel_Main, 270, 300, 'History', pubgitScrollWCross, False, False);
-//  PopUp_History.ImageBG.Top := -50;
-//  PopUp_History.ImageBG.Height := PopUp_History.Height + 100;
+  PopUp_History := TKMPopUpPanel.Create(Panel_Main, 270, 300, gResTexts[TX_MAPED_HISTORY_TITLE], pubgitScrollWCross, False, False);
   PopUp_History.CapOffsetY := 15;
   PopUp_History.Left := Panel_Main.Width - PopUp_History.Width;
   PopUp_History.Top  := 0;
@@ -303,8 +301,9 @@ begin
     ListBox_History.OnDoubleClick := HistoryJumpTo;
 
     Button_History_JumpTo := TKMButton.Create(PopUp_History, 10, ListBox_History.Bottom + 5,
-                                                             ListBox_History.Width, 20, 'Jump to', bsGame);
+                                                             ListBox_History.Width, 20, gResTexts[TX_MAPED_HISTORY_JUMP_TO], bsGame);
     Button_History_JumpTo.OnClick := HistoryJumpTo;
+    Button_History_JumpTo.Hint := gResTexts[TX_MAPED_HISTORY_JUMP_TO_HINT];
 
     Button_History_Undo := TKMButton.Create(PopUp_History, 10, PopUp_History.Height - 10, (ListBox_History.Width div 2) - 7, 20, '<< Undo', bsGame);
     Button_History_Undo.OnClick := UnRedoClick;
@@ -620,7 +619,7 @@ begin
     or (Sender = Button_History_Redo) then
     gGame.MapEditor.History.Redo;
 
-  HistoryUpdate;
+//  HistoryUpdate;
 end;
 
 
@@ -938,7 +937,7 @@ begin
     aHandled := True;
   end;
 
-  HistoryUpdate;
+//  HistoryUpdate;
 
   gGameCursor.SState := Shift; // Update Shift state on KeyUp
 end;
@@ -1088,6 +1087,12 @@ begin
 
   ListBox_History.SetTopIndex(gGame.MapEditor.History.Position, True);
   History_ListChange(nil);
+
+  if fGuiHouse.Visible or fGuiUnit.Visible then
+  begin
+    gMySpectator.Selected := nil; // Reset selection
+    HidePages;
+  end;
 end;
 
 

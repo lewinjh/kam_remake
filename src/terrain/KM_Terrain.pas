@@ -159,7 +159,7 @@ type
     procedure SetTileLock(const aLoc: TKMPoint; aTileLock: TKMTileLock);
     procedure UnlockTile(const aLoc: TKMPoint);
     procedure SetRoads(aList: TKMPointList; aOwner: TKMHandID; aUpdateWalkConnects: Boolean = True);
-    procedure SetRoad(const Loc: TKMPoint; aOwner: TKMHandID);
+    procedure SetRoad(const Loc: TKMPoint; aOwner: TKMHandID; aDoUpdate: Boolean = False);
     procedure SetInitWine(const Loc: TKMPoint; aOwner: TKMHandID);
     function GetFieldType(const Loc: TKMPoint): TKMFieldType;
     procedure SetFieldNoUpdate(const Loc: TKMPoint; aOwner: TKMHandID; aFieldType: TKMFieldType);
@@ -172,7 +172,7 @@ type
     procedure RemovePlayer(aPlayer: TKMHandID);
     procedure RemRoad(const Loc: TKMPoint);
     procedure RemField(const Loc: TKMPoint); overload;
-    procedure RemField(const Loc: TKMPoint; aDoUpdatePass, aDoUpdateWalk: Boolean; aDoUpdateFences: Boolean); overload;
+    procedure RemField(const Loc: TKMPoint; aDoUpdatePass, aDoUpdateWalk, aDoUpdateFences: Boolean); overload;
     procedure RemField(const Loc: TKMPoint; aDoUpdatePass, aDoUpdateWalk: Boolean; out aUpdatePassRect: TKMRect;
                        out aDiagObjectChanged: Boolean; aDoUpdateFences: Boolean); overload;
     procedure ClearPlayerLand(aPlayer: TKMHandID);
@@ -346,6 +346,8 @@ type
 
     procedure UpdateFences(const aRect: TKMRect; CheckSurrounding: Boolean = True); overload;
     procedure UpdateFences(const Loc: TKMPoint; CheckSurrounding: Boolean = True); overload;
+
+    procedure UpdateAll(const aRect: TKMRect);
 
     procedure IncAnimStep; //Lite-weight UpdateState for MapEd
     property AnimStep: Cardinal read fAnimStep;
@@ -2032,7 +2034,7 @@ begin
 end;
 
 
-procedure TKMTerrain.RemField(const Loc: TKMPoint; aDoUpdatePass, aDoUpdateWalk: Boolean; aDoUpdateFences: Boolean);
+procedure TKMTerrain.RemField(const Loc: TKMPoint; aDoUpdatePass, aDoUpdateWalk, aDoUpdateFences: Boolean);
 var
   updatePassRect: TKMRect;
   diagObjectChanged: Boolean;
@@ -2172,13 +2174,15 @@ begin
 end;
 
 
-procedure TKMTerrain.SetRoad(const Loc: TKMPoint; aOwner: TKMHandID);
+procedure TKMTerrain.SetRoad(const Loc: TKMPoint; aOwner: TKMHandID; aDoUpdate: Boolean = False);
 begin
   SetField_Init(Loc, aOwner);
 
   Land[Loc.Y,Loc.X].TileOverlay := toRoad;
 
-  SetField_Complete(Loc, ftRoad);
+  if aDoUpdate then
+    SetField_Complete(Loc, ftRoad);
+
   gScriptEvents.ProcRoadBuilt(aOwner, Loc.X, Loc.Y);
 end;
 
@@ -4451,6 +4455,15 @@ begin
   for I := Max(aRect.Top, 1) to Min(aRect.Bottom, fMapY - 1) do
     for K := Max(aRect.Left, 1) to Min(aRect.Right, fMapX - 1) do
       UpdateFences(KMPoint(K, I), CheckSurrounding);
+end;
+
+
+// Update all map internal data
+procedure TKMTerrain.UpdateAll(const aRect: TKMRect);
+begin
+  UpdatePassability(aRect);
+  UpdateFences(aRect);
+  UpdateLighting(aRect);
 end;
 
 
