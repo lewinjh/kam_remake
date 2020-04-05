@@ -194,8 +194,6 @@ type
     fOnChange: TEvent;
 
     procedure IncCounter;
-
-    
   public
     constructor Create;
     destructor Destroy; override;
@@ -285,8 +283,9 @@ var
   L: Integer;
 begin
   Result.BaseLayer.Terrain   := aTile.BaseLayer.Terrain;
-  Result.BaseLayer.Rotation  := aTile.BaseLayer.Rotation;
-  Result.BaseLayer.Corners   := aTile.BaseLayer.Corners;
+  Result.BaseLayer.PackRotNCorners(aTile.BaseLayer.Rotation, aTile.BaseLayer.Corners);
+//  Result.BaseLayer.Rotation  := aTile.BaseLayer.Rotation;
+//  Result.BaseLayer.Corners   := aTile.BaseLayer.Corners;
 
   Result.LayersCnt   := aTile.LayersCnt;
   Result.Height      := aTile.Height;
@@ -297,13 +296,13 @@ begin
   Result.Tiles       := aPaintedTile.Tiles;
   Result.HeightAdd   := aPaintedTile.HeightAdd;
   Result.TileOverlay := aTile.TileOverlay;
-//  Result.TileOwner   := aTile.TileOwner;
   SetLength(Result.Layer, aTile.LayersCnt);
   for L := 0 to aTile.LayersCnt - 1 do
   begin
     Result.Layer[L].Terrain   := aTile.Layer[L].Terrain;
-    Result.Layer[L].Rotation  := aTile.Layer[L].Rotation;
-    Result.Layer[L].Corners   := aTile.Layer[L].Corners;
+    Result.Layer[L].PackRotNCorners(aTile.Layer[L].Rotation, aTile.Layer[L].Corners);
+//    Result.Layer[L].Rotation  := aTile.Layer[L].Rotation;
+//    Result.Layer[L].Corners   := aTile.Layer[L].Corners;
   end;
 end;
 
@@ -313,8 +312,9 @@ var
   L: Integer;
 begin
   aTile.BaseLayer.Terrain   := aUndoTile.BaseLayer.Terrain;
-  aTile.BaseLayer.Rotation  := aUndoTile.BaseLayer.Rotation;
-  aTile.BaseLayer.Corners   := aUndoTile.BaseLayer.Corners;
+  aUndoTile.BaseLayer.UnpackRotAndCorners(aTile.BaseLayer.Rotation, aTile.BaseLayer.Corners);
+//  aTile.BaseLayer.Rotation  := aUndoTile.BaseLayer.Rotation;
+//  aTile.BaseLayer.Corners   := aUndoTile.BaseLayer.Corners;
 
   aTile.LayersCnt           := aUndoTile.LayersCnt;
   aTile.Height              := aUndoTile.Height;
@@ -329,8 +329,9 @@ begin
   for L := 0 to aUndoTile.LayersCnt - 1 do
   begin
     aTile.Layer[L].Terrain  := aUndoTile.Layer[L].Terrain;
-    aTile.Layer[L].Rotation := aUndoTile.Layer[L].Rotation;
-    aTile.Layer[L].Corners  := aUndoTile.Layer[L].Corners;
+    aUndoTile.Layer[L].UnpackRotAndCorners(aTile.Layer[L].Rotation, aTile.Layer[L].Corners);
+//    aTile.Layer[L].Rotation := aUndoTile.Layer[L].Rotation;
+//    aTile.Layer[L].Corners  := aUndoTile.Layer[L].Corners;
   end;
 end;
 
@@ -627,11 +628,9 @@ begin
     begin
       G := gHands[fUnits[I].Owner].AddUnitGroup(fUnits[I].UnitType, fUnits[I].Position, fUnits[I].Dir, 1, 1, False);
       U := G.FlagBearer;
-//      G := gHands[fUnits[I].Owner].UnitGroups.AddGroup(TKMUnitWarrior(U));
       G.MapEdCount := fUnits[I].GroupMemberCount;
       G.UnitsPerRow := fUnits[I].GroupColumns;
       G.MapEdOrder := fUnits[I].GroupOrder;
-//      U := gHands[fUnits[I].Owner].AddUnitGroup(fUnits[I].UnitType, fUnits[I].Position, dirS, 1, 1, False).FlagBearer
     end
     else
       U := gHands.PlayerAnimals.AddUnit(fUnits[I].UnitType, fUnits[I].Position, False);

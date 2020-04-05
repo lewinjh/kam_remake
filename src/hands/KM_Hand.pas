@@ -1405,7 +1405,7 @@ begin
   else
   begin
     //We have to consider destroyed closed house as actually opened, otherwise closed houses stats will be corrupted
-    if aHouse.IsClosedForWorker then
+    if aHouse.IsClosedForWorker and not gGame.IsMapEditor then
       fStats.HouseClosed(False, aHouse.HouseType);
 
     //Distribute honors

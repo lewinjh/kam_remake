@@ -8,10 +8,9 @@ type
   // same as TKMTerrainLayer, but packed
   TKMTerrainLayerPacked = packed record
     Terrain: Word;
-    Rotation: Byte;
-    Corners: TKMTileCorners; //Corners, that this layer 'owns' (corners are distributed between all layers, so any layer can own 1-4 corners)
-    procedure SetCorners(aCorners: TKMByteSet);
-    procedure ClearCorners;
+    RotationAndCorners: Byte;
+    procedure PackRotNCorners(aRotation: Byte; aCorners: TKMTileCorners);
+    procedure UnpackRotAndCorners(out aRotation: Byte; out aCorners: TKMTileCorners);
   end;
 
   //Tile data that we store in undo checkpoints
@@ -28,7 +27,6 @@ type
     Tiles: SmallInt;
     HeightAdd: Byte;
     TileOverlay: TKMTileOverlay;
-//    TileOwner: TKMHandID;
   end;
 
   TKMPainterTile = packed record
@@ -38,26 +36,30 @@ type
   end;
   
 implementation
+uses
+  KM_CommonUtils;
 
 
 { TKMTerrainLayerPacked }
-procedure TKMTerrainLayerPacked.SetCorners(aCorners: TKMByteSet);
+procedure TKMTerrainLayerPacked.PackRotNCorners(aRotation: Byte; aCorners: TKMTileCorners);
 var
   I: Integer;
 begin
+  RotationAndCorners := aRotation shl 4;
   for I := 0 to 3 do
-    Corners[I] := I in aCorners;
+    RotationAndCorners := RotationAndCorners or (Ord(aCorners[I]) shl I);
 end;
 
 
-procedure TKMTerrainLayerPacked.ClearCorners;
+procedure TKMTerrainLayerPacked.UnpackRotAndCorners(out aRotation: Byte; out aCorners: TKMTileCorners);
 var
   I: Integer;
 begin
+  aRotation := RotationAndCorners shr 4;
   for I := 0 to 3 do
-    Corners[I] := False;
+    aCorners[I] := ToBoolean((RotationAndCorners shr I) and $1);
 end;
- 
- 
+
+
 end.
  
