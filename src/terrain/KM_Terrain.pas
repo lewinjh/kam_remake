@@ -162,6 +162,7 @@ type
     procedure SetRoads(aList: TKMPointList; aOwner: TKMHandID; aUpdateWalkConnects: Boolean = True);
     procedure SetRoad(const Loc: TKMPoint; aOwner: TKMHandID);
     procedure SetInitWine(const Loc: TKMPoint; aOwner: TKMHandID);
+    function GetFieldType(const Loc: TKMPoint): TKMFieldType;
     procedure SetField(const Loc: TKMPoint; aOwner: TKMHandID; aFieldType: TKMFieldType; aStage: Byte = 0;
                        aRandomAge: Boolean = False; aKeepOldObject: Boolean = False; aRemoveOverlay: Boolean = True);
     procedure SetHouse(const Loc: TKMPoint; aHouseType: TKMHouseType; aHouseStage: TKMHouseStage; aOwner: TKMHandID; const aFlattenTerrain: Boolean = False);
@@ -170,7 +171,8 @@ type
     procedure RemovePlayer(aPlayer: TKMHandID);
     procedure RemRoad(const Loc: TKMPoint);
     procedure RemField(const Loc: TKMPoint); overload;
-    procedure RemField(const Loc: TKMPoint; aDoUpdatePassNWalk: Boolean; out aUpdatePassRect: TKMRect; 
+    procedure RemField(const Loc: TKMPoint; aDoUpdatePassNWalk: Boolean; aDoUpdateFences: Boolean); overload;
+    procedure RemField(const Loc: TKMPoint; aDoUpdatePassNWalk: Boolean; out aUpdatePassRect: TKMRect;
                        out aDiagObjectChanged: Boolean; aDoUpdateFences: Boolean); overload;
     procedure ClearPlayerLand(aPlayer: TKMHandID);
 
@@ -2025,7 +2027,16 @@ begin
 end;
 
 
-procedure TKMTerrain.RemField(const Loc: TKMPoint; aDoUpdatePassNWalk: Boolean;   
+procedure TKMTerrain.RemField(const Loc: TKMPoint; aDoUpdatePassNWalk: Boolean; aDoUpdateFences: Boolean);
+var
+  updatePassRect: TKMRect;
+  diagObjectChanged: Boolean;
+begin
+  RemField(Loc, aDoUpdatePassNWalk, updatePassRect, diagObjectChanged, aDoUpdateFences);
+end;
+
+
+procedure TKMTerrain.RemField(const Loc: TKMPoint; aDoUpdatePassNWalk: Boolean;
                               out aUpdatePassRect: TKMRect; out aDiagObjectChanged: Boolean;
                               aDoUpdateFences: Boolean);
 begin
@@ -4449,7 +4460,7 @@ procedure TKMTerrain.UpdateFences(const Loc: TKMPoint; CheckSurrounding: Boolean
       Result := False;
   end;
 begin
- if not TileInMapCoords(Loc.X, Loc.Y) then exit;
+  if not TileInMapCoords(Loc.X, Loc.Y) then Exit;
 
   Land[Loc.Y,Loc.X].Fence := GetFenceType;
 
@@ -4697,6 +4708,22 @@ begin
     Result := 4
   else
     Result := 5;
+end;
+
+
+function TKMTerrain.GetFieldType(const Loc: TKMPoint): TKMFieldType;
+begin
+  Result := ftNone;
+  if not TileInMapCoords(Loc.X, Loc.Y) then Exit;
+
+  if TileHasRoad(Loc) then
+    Result := ftRoad
+  else
+  if TileIsCornField(Loc) then
+    Result := ftCorn
+  else
+  if TileIsWineField(Loc) then
+    Result := ftWine;
 end;
 
 

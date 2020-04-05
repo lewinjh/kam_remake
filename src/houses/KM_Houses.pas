@@ -177,6 +177,7 @@ type
     procedure ReleaseHousePointer; //Decreases the pointer counter
     property PointerCount: Cardinal read fPointerCount;
 
+    procedure RemoveHouse;
     procedure DemolishHouse(aFrom: TKMHandID; IsSilent: Boolean = False); virtual;
     property BuildingProgress: Word read fBuildingProgress;
 
@@ -711,6 +712,15 @@ begin
       and ObjectShouldBeCleared(P2.X, P2.Y) then
       gTerrain.RemoveObject(P2);
   end;
+end;
+
+
+procedure TKMHouse.RemoveHouse;
+begin
+  Assert(gGame.IsMapEditor, 'Operation allowed only in the MapEd');
+
+  DemolishHouse(fOwner, True);
+  gHands[fOwner].Houses.DeleteHouseFromList(Self);
 end;
 
 

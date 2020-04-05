@@ -39,8 +39,6 @@ type
 
     fIgnoreMouseUp: Boolean;     // Ignore Mouse Up in case we have just done RightClick_Cancel
 
-    fCheckpointsStr: TStringList;
-
     fGuiHouse: TKMMapEdHouse;
     fGuiUnit: TKMMapEdUnit;
     fGuiTerrain: TKMMapEdTerrain;
@@ -92,6 +90,8 @@ type
 
     procedure UnRedoClick(Sender: TObject);
     procedure HistoryClick(Sender: TObject);
+    procedure HistoryJumpTo(Sender: TObject);
+    procedure History_ListChange(Sender: TObject);
   protected
     MinimapView: TKMMinimapView;
     Label_Coordinates: TKMLabel;
@@ -104,7 +104,8 @@ type
     PopUp_History: TKMPopUpPanel;
       ListBox_History: TKMListBox;
       Button_History_Undo,
-      Button_History_Redo: TKMButton;
+      Button_History_Redo,
+      Button_History_JumpTo: TKMButton;
 
     Label_Stat: TKMLabel;
 
@@ -134,7 +135,7 @@ type
     procedure Resize(X,Y: Word); override;
     procedure SetLoadMode(aMultiplayer: Boolean);
 
-    procedure UpdateHistory;
+    procedure HistoryUpdate;
 
     procedure SyncUI(aMoveViewport: Boolean = True); override;
     procedure UpdateState(aTickCount: Cardinal); override;
@@ -167,8 +168,6 @@ var
   S: TKMShape;
 begin
   inherited;
-
-  fCheckpointsStr := TStringList.Create;
 
   fMinimap.PaintVirtualGroups := True;
 
@@ -293,24 +292,28 @@ begin
   PopUp_History := TKMPopUpPanel.Create(Panel_Main, 270, 300, 'History', pubgitScrollWCross, False, False);
 //  PopUp_History.ImageBG.Top := -50;
 //  PopUp_History.ImageBG.Height := PopUp_History.Height + 100;
+  PopUp_History.CapOffsetY := 15;
   PopUp_History.Left := Panel_Main.Width - PopUp_History.Width;
   PopUp_History.Top  := 0;
   PopUp_History.DragEnabled := True;
 
-    ListBox_History := TKMListBox.Create(PopUp_History, 10, 15, PopUp_History.Width - 20, PopUp_History.Height - 35, fntMetal, bsGame);
+    ListBox_History := TKMListBox.Create(PopUp_History, 10, 10, PopUp_History.Width - 20, PopUp_History.Height - 50, fntMetal, bsGame);
     ListBox_History.AutoHideScrollBar := True;
+    ListBox_History.OnChange := History_ListChange;
+    ListBox_History.OnDoubleClick := HistoryJumpTo;
 
-    Button_History_Undo := TKMButton.Create(PopUp_History, 10, PopUp_History.Height - 10, 100, 20, '<< Undo', bsGame);
+    Button_History_JumpTo := TKMButton.Create(PopUp_History, 10, ListBox_History.Bottom + 5,
+                                                             ListBox_History.Width, 20, 'Jump to', bsGame);
+    Button_History_JumpTo.OnClick := HistoryJumpTo;
+
+    Button_History_Undo := TKMButton.Create(PopUp_History, 10, PopUp_History.Height - 10, (ListBox_History.Width div 2) - 7, 20, '<< Undo', bsGame);
     Button_History_Undo.OnClick := UnRedoClick;
     Button_History_Undo.Hint := gResTexts[TX_MAPED_UNDO_HINT]+ ' (''Ctrl + Z'')';
+
     Button_History_Redo := TKMButton.Create(PopUp_History, PopUp_History.Width - 10 - Button_History_Undo.Width,
                                                            Button_History_Undo.Top, Button_History_Undo.Width, 20, 'Redo >>', bsGame);
     Button_History_Redo.OnClick := UnRedoClick;
     Button_History_Redo.Hint := gResTexts[TX_MAPED_REDO_HINT] + ' (''Ctrl + Y'' or ''Ctrl + Shift + Z'')';
-
-//    Button_History_Close := TKMButton.Create(PopUp_History, (PopUp_History.Width - Button_History_Undo.Width) div 2,
-//                                                           PopUp_History.Height - 35, Button_History_Undo.Width, 20, 'Close', bsGame);
-//    Button_History_Close.OnClick := HistoryClick;
 
 
   if OVERLAY_RESOLUTIONS then
@@ -347,7 +350,6 @@ begin
   fGuiMenu.Free;
   fGuiMessage.Free;
   fGuiUnit.Free;
-  fCheckpointsStr.Free;
 
   SHOW_TERRAIN_WIRES := false; //Don't show it in-game if they left it on in MapEd
   SHOW_TERRAIN_PASS := 0; //Don't show it in-game if they left it on in MapEd
@@ -404,6 +406,13 @@ begin
   PopUp_History.Visible := not PopUp_History.Visible;
 
   Button_History.Down := PopUp_History.Visible;
+end;
+
+
+procedure TKMapEdInterface.HistoryJumpTo(Sender: TObject);
+begin
+  if ListBox_History.Selected then
+    gGame.MapEditor.History.JumpTo(ListBox_History.ItemIndex);
 end;
 
 
@@ -611,7 +620,7 @@ begin
     or (Sender = Button_History_Redo) then
     gGame.MapEditor.History.Redo;
 
-  UpdateHistory;
+  HistoryUpdate;
 end;
 
 
@@ -929,7 +938,7 @@ begin
     aHandled := True;
   end;
 
-  UpdateHistory;
+  HistoryUpdate;
 
   gGameCursor.SState := Shift; // Update Shift state on KeyUp
 end;
@@ -1060,9 +1069,13 @@ begin
 end;
 
 
-procedure TKMapEdInterface.UpdateHistory;
-//var
-//  I: Integer;
+procedure TKMapEdInterface.History_ListChange(Sender: TObject);
+begin
+  Button_History_JumpTo.Enabled := ListBox_History.Selected;
+end;
+
+
+procedure TKMapEdInterface.HistoryUpdate;
 begin
   Button_Undo.Enabled := gGame.MapEditor.History.CanUndo;
   Button_Redo.Enabled := gGame.MapEditor.History.CanRedo;
@@ -1073,7 +1086,8 @@ begin
   gGame.MapEditor.History.GetCheckpoints(ListBox_History.Items);
   ListBox_History.UpdateScrollBar;
 
-  ListBox_History.TopIndex := gGame.MapEditor.History.Position;
+  ListBox_History.SetTopIndex(gGame.MapEditor.History.Position, True);
+  History_ListChange(nil);
 end;
 
 

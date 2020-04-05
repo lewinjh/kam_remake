@@ -100,7 +100,7 @@ var
 
 implementation
 uses
-  SysUtils,
+  SysUtils, TypInfo,
   KromUtils,
   KM_Supervisor,
   KM_Game, KM_Terrain, KM_AIFields,
@@ -853,10 +853,11 @@ begin
   Result := H <> nil;
   if Result then
   begin
-    H.DemolishHouse(H.Owner, True);
-    fHandsList[H.Owner].Houses.DeleteHouseFromList(H);
+//    H.DemolishHouse(H.Owner, True);
+//    fHandsList[H.Owner].Houses.DeleteHouseFromList(H);
+    H.RemoveHouse;
 
-    gGame.MapEditor.History.MakeCheckpoint(caHouses, 'Remove house');
+    gGame.MapEditor.History.MakeCheckpoint(caHouses, 'Remove house ''' + GetEnumName(TypeInfo(TKMHouseType), Integer(H.HouseType)) + '''');
   end;
 end;
 

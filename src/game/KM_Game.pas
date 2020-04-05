@@ -525,7 +525,7 @@ begin
   if fGameMode = gmMapEd then
   begin
     //Mission loader needs to read the data into MapEd (e.g. FOW revealers)
-    fMapEditor := TKMMapEditor.Create(fTerrainPainter, fMapEditorInterface.UpdateHistory);
+    fMapEditor := TKMMapEditor.Create(fTerrainPainter, fMapEditorInterface.HistoryUpdate);
     fMapEditor.DetectAttachedFiles(aMissionFile);
   end;
 
@@ -661,6 +661,12 @@ begin
   //Basesave is sort of temp we save to HDD instead of keeping in RAM
   if fGameMode in [gmSingle, gmCampaign, gmMulti, gmMultiSpectate] then
     SaveGameToFile(SaveName('basesave', EXT_SAVE_BASE, IsMultiPlayerOrSpec), UTCNow);
+
+  if IsMapEditor then
+  begin
+    fMapEditor.History.Clear;
+    fMapEditor.History.MakeCheckpoint(caAll, 'Initial');
+  end;
 
   //MissionStart goes after basesave to keep it pure (repeats on Load of basesave)
   gScriptEvents.ProcMissionStart;
@@ -1180,11 +1186,11 @@ begin
   fMissionFileSP := '';
   fSaveFile := '';
 
-  fMapEditor := TKMMapEditor.Create(fTerrainPainter, fMapEditorInterface.UpdateHistory);
+  fMapEditor := TKMMapEditor.Create(fTerrainPainter, fMapEditorInterface.HistoryUpdate);
   fMapEditor.MissionDefSavePath := fGameName + '.dat';
   gTerrain.MakeNewMap(aSizeX, aSizeY, True);
   fTerrainPainter.InitEmpty;
-  fMapEditor.History.MakeCheckpoint(caAll, 'Initial checkpoint after creation');
+  fMapEditor.History.MakeCheckpoint(caAll, 'Initial');
   fMapEditor.IsNewMap := True;
 
   gHands.AddPlayers(MAX_HANDS); //Create MAX players

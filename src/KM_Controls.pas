@@ -1107,13 +1107,14 @@ type
     function GetItemIndex: Integer; virtual; abstract;
     procedure SetItemIndex(aIndex: Integer); virtual; abstract;
     function GetTopIndex: Integer; virtual; abstract;
-    procedure SetTopIndex(aIndex: Integer); virtual; abstract;
+    procedure SetTopIndex(aIndex: Integer); overload; virtual; abstract;
     function GetVisibleRows: Integer; virtual; abstract;
     function GetItemString(aIndex: Integer): UnicodeString; virtual; abstract;
 
     function KeyEventHandled(Key: Word; Shift: TShiftState): Boolean; virtual;
     function CanChangeSelection: Boolean; virtual;
   public
+    procedure SetTopIndex(aIndex: Integer; aStayOnList: Boolean); overload;
     property ItemIndex: Integer read GetItemIndex write SetItemIndex;
     property TopIndex: Integer read GetTopIndex write SetTopIndex;
     property RowCount: Integer read GetRowCount;
@@ -1682,6 +1683,7 @@ type
     Caption: UnicodeString;
     Font: TKMFont;
     FontColor: TColor4;
+    CapOffsetY: Integer;
     constructor Create(aParent: TKMPanel; aWidth, aHeight: Integer; const aCaption: UnicodeString = '';
                        aImageType: TKMPopUpBGImageType = pubgitYellow; aShowBevel: Boolean = True; aShowShadeBevel: Boolean = True);
 
@@ -7412,6 +7414,21 @@ begin
 end;
 
 
+procedure TKMSearchableList.SetTopIndex(aIndex: Integer; aStayOnList: Boolean);
+begin
+  if not aStayOnList
+    or not InRange(aIndex - TopIndex, 0, GetVisibleRows - 1) then
+//    or not InRange(aIndex, ItemIndex, ItemIndex + GetVisibleRows) then
+  begin
+    if aIndex < TopIndex then
+      TopIndex := ItemIndex
+    else
+    if aIndex > TopIndex + GetVisibleRows - 1 then
+      TopIndex := aIndex - GetVisibleRows + 1;
+  end;
+end;
+
+
 { TKMColumnListBox }
 constructor TKMColumnBox.Create(aParent: TKMPanel; aLeft, aTop, aWidth, aHeight: Integer; aFont: TKMFont; aStyle: TKMButtonStyle);
 const
@@ -8330,7 +8347,7 @@ procedure TKMPopUpPanel.PaintPanel(aPaintLayer: Integer);
 begin
   inherited;
 
-  TKMRenderUI.WriteText(AbsLeft, AbsTop - 30, Width, Caption, Font, taCenter, FontColor);
+  TKMRenderUI.WriteText(AbsLeft, AbsTop - 30 + CapOffsetY, Width, Caption, Font, taCenter, FontColor);
 end;
 
 

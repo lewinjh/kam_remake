@@ -16,9 +16,9 @@ type
 //    caTriggers,
 //    caWaterLevel,
     caUnits,
-    caHouses
+    caHouses,
 //    caFences,
-//    caFields
+    caFields
     //todo -cPractical: Other areas
     // Dispositions
     // CenterScreen
@@ -68,20 +68,21 @@ type
 //    procedure Apply(aArea: TKMCheckpointArea = caAll); override;
 //  end;
 
-//  TKMCheckpointFields = class(TKMCheckpoint)
-//  type
-//    TKMTerrainFieldRec = record
-//      Field: TKMFieldType;
-//      Owner: TKMHandID;
-//      Age: Byte;
-//    end;
-//  private
-//    // Each Undo step stores whole terrain for simplicity
-//    fData: array of array of TKMTerrainFieldRec;
-//  public
-//    constructor Create(const aCaption: string);
-//    procedure Apply(aArea: TKMCheckpointArea = caAll); override;
-//  end;
+  TKMCheckpointFields = class(TKMCheckpoint)
+  type
+    TKMTerrainFieldRec = record
+      Field: TKMFieldType;
+      Owner: TKMHandID;
+      Age: Byte;
+      Overlay: TKMTileOverlay;
+    end;
+  private
+    // Each Undo step stores whole terrain for simplicity
+    fData: array of array of TKMTerrainFieldRec;
+  public
+    constructor Create(const aCaption: string);
+    procedure Apply(aArea: TKMCheckpointArea = caAll); override;
+  end;
 
 //  TKMCheckpointEmitters = class(TKMCheckpoint)
 //  private
@@ -191,6 +192,8 @@ type
     fOnChange: TEvent;
 
     procedure IncCounter;
+
+    
   public
     constructor Create;
     destructor Destroy; override;
@@ -202,8 +205,10 @@ type
     property Position: Integer read fCheckpointPos;
     property Counter: Cardinal read fCounter;
     procedure GetCheckpoints(aList: TStringList);
+    procedure Clear;
 
     procedure MakeCheckpoint(aArea: TKMCheckpointArea; const aCaption: string);
+    procedure JumpTo(aIndex: Integer);
     procedure Undo;
     procedure Redo;
   end;
@@ -211,6 +216,7 @@ type
 
 implementation
 uses
+  Math,
   KM_HandsCollection, KM_Hand, KM_Units, KM_UnitsCollection, KM_CommonClasses, KM_UnitWarrior, KM_Utils,
   KM_Game, KM_CommonUtils, KM_Resource, KM_HouseTownhall, KM_HouseBarracks, KM_HouseMarket;
 
@@ -230,7 +236,7 @@ begin
     caAll:        Result := TKMCheckpointAll.Create(aCaption);
     caTerrain:    Result := TKMCheckpointTerrain.Create(aCaption);
 //    caFences:     Result := TKMCheckpointFences.Create(aCaption);
-//    caFields:     Result := TKMCheckpointFields.Create(aCaption);
+    caFields:     Result := TKMCheckpointFields.Create(aCaption);
 //    caEmitters:   Result := TKMCheckpointEmitters.Create(aCaption);
 //    caStockpiles: Result := TKMCheckpointStockpiles.Create(aCaption);
 //    caTriggers:   Result := TKMCheckpointTriggers.Create(aCaption);
@@ -266,9 +272,9 @@ begin
 
   SetLength(fData, gTerrain.MapY, gTerrain.MapX);
 
-  for I := 1 to gTerrain.MapY do
-  for K := 1 to gTerrain.MapX do
-    fData[I-1,K-1] := MakeUndoTile(gTerrain.Land[I,K], gGame.TerrainPainter.LandTerKind[I,K]);
+  for I := 0 to gTerrain.MapY - 1 do
+  for K := 0 to gTerrain.MapX - 1 do
+    fData[I,K] := MakeUndoTile(gTerrain.Land[I+1,K+1], gGame.TerrainPainter.LandTerKind[I+1,K+1]);
 end;
 
 
@@ -381,41 +387,50 @@ end;
 
 
 { TKMCheckpointFields }
-//constructor TKMCheckpointFields.Create(const aCaption: string);
-//var
-//  I, K: Integer;
-//begin
-//  inherited Create(aCaption);
-//
-//  fArea := caFields;
-//
-//  SetLength(fData, gTerrain.MapY, gTerrain.MapX);
-//
-//  for I := 0 to gTerrain.MapY-1 do
-//  for K := 0 to gTerrain.MapX-1 do
-//  begin
-//    fData[I,K].Field := gTerrain.Land[I,K].TileField;
-//    fData[I,K].Owner := gTerrain.Land[I,K].TileOwner;
-//    fData[I,K].Age := gTerrain.Land[I,K].FieldAge;
-//  end;
-//end;
-//
-//
-//procedure TKMCheckpointFields.Apply(aArea: TKMCheckpointArea = caAll);
-//var
-//  I, K: Integer;
-//begin
-//  for I := 0 to gTerrain.MapY-1 do
-//  for K := 0 to gTerrain.MapX-1 do
-//  begin
-//    gTerrain.Land[I,K].TileField := fData[I,K].Field;
-//    gTerrain.Land[I,K].TileOwner := fData[I,K].Owner;
-//    gTerrain.Land[I,K].FieldAge := fData[I,K].Age;
-//  end;
-//
-//  gTerrain.UpdatePassability(gTerrain.MapRect);
+constructor TKMCheckpointFields.Create(const aCaption: string);
+var
+  I, K: Integer;
+begin
+  inherited Create(aCaption);
+
+  fArea := caFields;
+
+  SetLength(fData, gTerrain.MapY, gTerrain.MapX);
+
+  for I := 0 to gTerrain.MapY-1 do
+  for K := 0 to gTerrain.MapX-1 do
+  begin
+    fData[I,K].Field    := gTerrain.GetFieldType(KMPoint(K+1,I+1));
+    fData[I,K].Owner    := gTerrain.Land[I+1,K+1].TileOwner;
+    fData[I,K].Age      := gTerrain.Land[I+1,K+1].FieldAge;
+    fData[I,K].Overlay  := gTerrain.Land[I+1,K+1].TileOverlay;
+  end;
+end;
+
+
+procedure TKMCheckpointFields.Apply(aArea: TKMCheckpointArea = caAll);
+var
+  I, K: Integer;
+  P: TKMPoint;
+begin
+  for I := 0 to gTerrain.MapY-1 do
+  for K := 0 to gTerrain.MapX-1 do
+  begin
+    P := KMPoint(K, I);
+    case fData[I,K].Field of
+      ftNone: gTerrain.RemField(P, True, True);
+      ftRoad: gTerrain.SetRoad(P, fData[I,K].Owner);   
+      ftCorn,
+      ftWine: gTerrain.SetField(P, fData[I,K].Owner, fData[I,K].Field);
+    end;
+    gTerrain.Land[I+1,K+1].TileOwner    := fData[I,K].Owner;
+    gTerrain.Land[I+1,K+1].FieldAge     := fData[I,K].Age;
+    gTerrain.Land[I+1,K+1].TileOverlay  := fData[I,K].Overlay;
+  end;
+
+  gTerrain.UpdatePassability(gTerrain.MapRect);
 //  gTerrain.ChangeAll;
-//end;
+end;
 
 
 //{ TKMCheckpointEmitters }
@@ -707,9 +722,10 @@ begin
   // Remove all houses and apply them anew
   for I := 0 to gHands.Count - 1 do
   begin
-    for K := 0 to gHands[I].Houses.Count - 1 do
-      if not gHands[I].Houses[K].PlacedOverRoad and gTerrain.TileHasRoad(gHands[I].Houses[K].Entrance) then
-        gTerrain.RemRoad(gHands[I].Houses[K].Entrance);
+    for K := gHands[I].Houses.Count - 1 downto 0 do
+      gHands[I].Houses[K].DemolishHouse(I, True);
+//      if not gHands[I].Houses[K].PlacedOverRoad and gTerrain.TileHasRoad(gHands[I].Houses[K].Entrance) then
+//        gTerrain.RemRoad(gHands[I].Houses[K].Entrance);
     gHands[I].Houses.Clear;
   end;
 
@@ -865,6 +881,14 @@ begin
 end;
 
 
+procedure TKMMapEditorHistory.Clear;
+begin
+  fCheckpoints.Clear;
+  fCounter := 0;
+  fCheckpointPos := 0;
+end;
+
+
 // Get list of available checkpoints (tag current/prev/next with a color)
 procedure TKMMapEditorHistory.GetCheckpoints(aList: TStringList);
 var
@@ -875,8 +899,8 @@ begin
 
   for I := 0 to fCheckpoints.Count - 1 do
   begin
-    s := fCheckpoints[I].Caption;
-
+    s := IntToStr(I) + '. ' + fCheckpoints[I].Caption;
+    
     // Undo checkpoints are white (no color-wrap)
     // Current checkpoint highlighted in yellow
     // Redo checkpoints highlighted in light-grey
@@ -894,6 +918,23 @@ end;
 procedure TKMMapEditorHistory.IncCounter;
 begin
   Inc(fCounter);
+end;
+
+
+procedure TKMMapEditorHistory.JumpTo(aIndex: Integer);
+var
+  I: Integer;
+begin
+  aIndex := EnsureRange(aIndex, 0, fCheckpoints.Count - 1);
+  if aIndex < fCheckpointPos then
+  begin
+    for I := aIndex to fCheckpointPos - 1 do
+      Undo;
+  end
+  else
+  if aIndex > fCheckpointPos then
+    for I := fCheckpointPos to aIndex - 1 do
+      Redo;
 end;
 
 

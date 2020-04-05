@@ -141,7 +141,8 @@ end;
 //Delete pointer to House in List
 procedure TKMHousesCollection.DeleteHouseFromList(aHouse: TKMHouse);
 begin
-  Assert(gGame.GameMode = gmMapEd); // Allow to delete existing House directly only in MapEd
+  Assert(gGame.IsMapEditor); // Allow to delete existing House directly only in MapEd
+
   if (aHouse <> nil) then
     fHouses.Extract(aHouse);
 end;
