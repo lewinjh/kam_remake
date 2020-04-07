@@ -1933,14 +1933,17 @@ begin
             );
       end
     end;
-    SaveStream.SaveToFile(aPathName); //Some 70ms for TPR7 map
+
+    TKMemoryStream.AsyncSaveToFileAndFree(SaveStream, aPathName);
     if DoSaveGameAsText then
     begin
       SaveGameToStream(aTimestamp, SaveStreamTxt);
       SaveStreamTxt.SaveToFile(aPathName + EXT_SAVE_TXT_DOT);
     end;
   finally
-    FreeAndNil(SaveStream);
+    if SaveStream <> nil then
+      FreeAndNil(SaveStream);
+
     if DoSaveGameAsText then
       FreeAndNil(SaveStreamTxt);
   end;

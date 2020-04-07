@@ -1114,8 +1114,7 @@ var
 begin
   S := TKMemoryStreamBinary.Create;
   SaveToStream(S);
-  S.SaveToFile(aFileName);
-  S.Free;
+  TKMemoryStream.AsyncSaveToFileAndFree(S, aFileName);
 end;
 
 

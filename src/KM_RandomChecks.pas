@@ -432,8 +432,7 @@ begin
   //SaveStream now contains the compressed data from SourceStream
 //  CompressionStream.Free;
 
-  SaveStream.SaveToFile(aPath);
-  SaveStream.Free;
+  TKMemoryStream.AsyncSaveToFileAndFree(SaveStream, aPath);
 end;
 
 

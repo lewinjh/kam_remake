@@ -82,6 +82,8 @@ type
     //ZLib's decompression streams don't work with the normal TStreams.CopyFrom since
     //it uses ReadBuffer. This procedure will work when Source is a TDecompressionStream
     procedure CopyFromDecompression(Source: TStream);
+
+    class procedure AsyncSaveToFileAndFree(var aStream; const aFile: String);
   end;
 
   // Extended with custom Read/Write commands which accept various types without asking for their length
@@ -386,7 +388,7 @@ type
 
 implementation
 uses
-  Math, KM_CommonUtils;
+  Math, System.Threading, KM_CommonUtils;
 
 const
   MAPS_CRC_DELIMITER = ':';
@@ -442,6 +444,21 @@ begin
   inherited Write(I, SizeOf(I));
   if I = 0 then Exit;
   inherited Write(Pointer(Value)^, I);
+end;
+
+
+class procedure TKMemoryStream.AsyncSaveToFileAndFree(var aStream; const aFile: String);
+var
+  CapturedStream: TKMemoryStream;
+begin
+  Assert(TObject(aStream) is TKMemoryStream);
+  CapturedStream := TKMemoryStream(aStream);
+  Pointer(aStream) := nil;
+  TTask.Run(procedure
+  begin
+    CapturedStream.SaveToFile(aFile);
+    FreeAndNil(CapturedStream);
+  end);
 end;
 
 
