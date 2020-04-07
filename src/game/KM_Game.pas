@@ -1982,10 +1982,10 @@ begin
   begin
     //Game was saved from replay (.bas file)
     if FileExists(fLoadFromFile) then
-      KMCopyFile(fLoadFromFile, NewSaveName, True);
+      KMCopyFileAsync(fLoadFromFile, NewSaveName, True);
   end else
     //Normally saved game
-    KMCopyFile(SaveName('basesave', EXT_SAVE_BASE, IsMultiplayer), NewSaveName, True);
+    KMCopyFileAsync(SaveName('basesave', EXT_SAVE_BASE, IsMultiplayer), NewSaveName, True);
 
   //Save replay queue
   gLog.AddTime('Saving replay info');

@@ -16,6 +16,8 @@ uses
   procedure KMCopyFile(const aSrc, aDest: UnicodeString); overload;
   procedure KMCopyFile(const aSrc, aDest: UnicodeString; aOverwrite: Boolean); overload;
 
+  procedure KMCopyFileAsync(const aSrc, aDest: UnicodeString; aOverwrite: Boolean);
+
   //Delete a folder (DeleteFolder is different between Delphi and Lazarus)
   procedure KMDeleteFolder(const aPath: UnicodeString);
 
@@ -34,7 +36,7 @@ uses
 
 implementation
 uses
-  StrUtils, KM_CommonUtils;
+  StrUtils, System.Threading, KM_CommonUtils;
 
 
 function ReadTextA(const aFilename: UnicodeString): AnsiString;
@@ -144,6 +146,23 @@ begin
   {$IFDEF WDC}
   TFile.Copy(aSrc, aDest);
   {$ENDIF}
+end;
+
+
+procedure KMCopyFileAsync(const aSrc, aDest: UnicodeString; aOverwrite: Boolean);
+begin
+  TTask.Run(procedure
+  begin
+    if aOverwrite and FileExists(aDest) then
+      DeleteFile(aDest);
+
+    {$IFDEF FPC}
+    CopyFile(aSrc, aDest);
+    {$ENDIF}
+    {$IFDEF WDC}
+    TFile.Copy(aSrc, aDest);
+    {$ENDIF}
+  end);
 end;
 
 
