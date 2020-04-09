@@ -174,18 +174,15 @@ end;
 
 procedure KMCopyFileAsync(const aSrc, aDest: UnicodeString; aOverwrite: Boolean);
 begin
+  {$IFDEF WDC}
   TTask.Run(procedure
   begin
-    if aOverwrite and FileExists(aDest) then
-      DeleteFile(aDest);
-
-    {$IFDEF FPC}
-    CopyFile(aSrc, aDest);
-    {$ENDIF}
-    {$IFDEF WDC}
-    TFile.Copy(aSrc, aDest);
-    {$ENDIF}
+    KMCopyFile(aSrc, aDest, aOverwrite);
   end);
+  {$ELSE}
+  //Non-async
+  KMCopyFile(aSrc, aDest, aOverwrite);
+  {$ENDIF}
 end;
 
 

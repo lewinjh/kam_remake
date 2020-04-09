@@ -454,11 +454,17 @@ begin
   Assert(TObject(aStream) is TKMemoryStream);
   CapturedStream := TKMemoryStream(aStream);
   Pointer(aStream) := nil;
+  {$IFDEF WDC}
   TTask.Run(procedure
   begin
     CapturedStream.SaveToFile(aFile);
     FreeAndNil(CapturedStream);
   end);
+  {$ELSE}
+  //Non-async
+  CapturedStream.SaveToFile(aFile);
+  FreeAndNil(CapturedStream);
+  {$ENDIF}
 end;
 
 
