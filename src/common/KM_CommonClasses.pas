@@ -388,7 +388,10 @@ type
 
 implementation
 uses
-  Math, System.Threading, KM_CommonUtils;
+  {$IFDEF WDC}
+  System.Threading,
+  {$ENDIF}
+  Math, KM_CommonUtils, KM_DevPerfLog, KM_DevPerfLogTypes, KM_Game;
 
 const
   MAPS_CRC_DELIMITER = ':';
