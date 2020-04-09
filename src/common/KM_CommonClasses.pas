@@ -83,7 +83,7 @@ type
     //it uses ReadBuffer. This procedure will work when Source is a TDecompressionStream
     procedure CopyFromDecompression(Source: TStream);
 
-    class procedure AsyncSaveToFileAndFree(var aStream; const aFile: String);
+    class procedure AsyncSaveToFileAndFree(var aStream; const aFile: String; aAsync: Boolean);
   end;
 
   // Extended with custom Read/Write commands which accept various types without asking for their length
@@ -447,7 +447,7 @@ begin
 end;
 
 
-class procedure TKMemoryStream.AsyncSaveToFileAndFree(var aStream; const aFile: String);
+class procedure TKMemoryStream.AsyncSaveToFileAndFree(var aStream; const aFile: String; aAsync: Boolean);
 var
   CapturedStream: TKMemoryStream;
 begin
@@ -455,11 +455,19 @@ begin
   CapturedStream := TKMemoryStream(aStream);
   Pointer(aStream) := nil;
   {$IFDEF WDC}
-  TTask.Run(procedure
+  if aAsync then
+  begin
+    TTask.Run(procedure
+    begin
+      CapturedStream.SaveToFile(aFile);
+      FreeAndNil(CapturedStream);
+    end);
+  end
+  else
   begin
     CapturedStream.SaveToFile(aFile);
     FreeAndNil(CapturedStream);
-  end);
+  end;
   {$ELSE}
   //Non-async
   CapturedStream.SaveToFile(aFile);

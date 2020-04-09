@@ -588,7 +588,7 @@ begin
   begin
     GameFinished;
     if fGameSettings.AutosaveAtGameEnd then
-      gGame.Save(Format('%s %s #%d', [gGame.GameName, FormatDateTime('yyyy-mm-dd', Now), fGameSettings.DayGamesCount]), Now);
+      gGame.Save(Format('%s %s #%d', [gGame.GameName, FormatDateTime('yyyy-mm-dd', Now), fGameSettings.DayGamesCount]), Now, True);
   end;
 
   if Assigned(fOnGameEnd) then
@@ -649,7 +649,8 @@ end;
 procedure TKMGameApp.PrepareReturnToLobby(aTimestamp: TDateTime);
 begin
   if gGame = nil then Exit;
-  gGame.Save(RETURN_TO_LOBBY_SAVE, aTimestamp);
+  //Can't save asynchronously since we need the save files immediately for the lobby
+  gGame.Save(RETURN_TO_LOBBY_SAVE, aTimestamp, False);
   gGame.IsPaused := True; //Freeze the game
   fNetworking.AnnounceReadyToReturnToLobby;
   //Now we wait for other clients to reach this step, then fNetworking triggers StopGameReturnToLobby

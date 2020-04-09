@@ -89,7 +89,7 @@ type
     procedure OtherPlayerDisconnected(aDefeatedPlayerHandId: Integer);
     procedure MultiplayerRig(aNewGame: Boolean);
     procedure SaveGameToStream(aTimestamp: TDateTime; aSaveStream: TKMemoryStream; aReplayStream: Boolean = False);
-    procedure SaveGameToFile(const aPathName: String; aTimestamp: TDateTime; const aMPLocalDataPathName: String = '');
+    procedure SaveGameToFile(const aPathName: String; aTimestamp: TDateTime; aAsync: Boolean; const aMPLocalDataPathName: String = '');
     procedure UpdatePeaceTime;
     function GetWaitingPlayersList: TKMByteArray;
     function FindHandToSpec: Integer;
@@ -255,8 +255,8 @@ type
 
     procedure SetSeed(aSeed: Integer);
 
-    procedure Save(const aSaveName: UnicodeString); overload;
-    procedure Save(const aSaveName: UnicodeString; aTimestamp: TDateTime); overload;
+    procedure Save(const aSaveName: UnicodeString; aAsync: Boolean); overload;
+    procedure Save(const aSaveName: UnicodeString; aTimestamp: TDateTime; aAsync: Boolean); overload;
     {$IFDEF USE_MAD_EXCEPT}
     procedure AttachCrashReport(const ExceptIntf: IMEException; const aZipFile: UnicodeString);
     {$ENDIF}
@@ -657,7 +657,7 @@ begin
   //until after user saves it, but we need to attach replay base to it.
   //Basesave is sort of temp we save to HDD instead of keeping in RAM
   if fGameMode in [gmSingle, gmCampaign, gmMulti, gmMultiSpectate] then
-    SaveGameToFile(SaveName('basesave', EXT_SAVE_BASE, IsMultiPlayerOrSpec), UTCNow);
+    SaveGameToFile(SaveName('basesave', EXT_SAVE_BASE, IsMultiPlayerOrSpec), UTCNow, True);
 
   if IsMapEditor then
   begin
@@ -922,7 +922,7 @@ begin
     if (fGameMode in [gmSingle, gmCampaign, gmMulti, gmMultiSpectate])
       and not (fGamePlayInterface.UIMode = umReplay) then //In case game mode was altered or loaded with logical error
     begin
-      Save('crashreport', UTCNow);
+      Save('crashreport', UTCNow, False);
       AttachFile(SaveName('crashreport', EXT_SAVE_MAIN, IsMultiPlayerOrSpec));
       AttachFile(SaveName('crashreport', EXT_SAVE_MAIN_TXT, IsMultiPlayerOrSpec)); //Todo Debug. remove before release
       AttachFile(SaveName('crashreport', EXT_SAVE_BASE, IsMultiPlayerOrSpec));
@@ -1219,7 +1219,7 @@ end;
 
 procedure TKMGame.AutoSaveAfterPT(aTimestamp: TDateTime);
 begin
-  Save('autosave_after_pt_end', aTimestamp);
+  Save('autosave_after_pt_end', aTimestamp, True);
 end;
 
 
@@ -1227,8 +1227,6 @@ procedure TKMGame.AutoSave(aTimestamp: TDateTime);
 var
   I: Integer;
 begin
-  Save('autosave', aTimestamp); //Save to temp file
-
   //Delete last autosave
   KMDeleteFolder(SavePath('autosave' + Int2Fix(gGameApp.GameSettings.AutosaveCount, 2), IsMultiPlayerOrSpec));
 
@@ -1236,8 +1234,7 @@ begin
   for I := gGameApp.GameSettings.AutosaveCount downto 2 do // 03 to 01
     KMMoveFolder(SavePath('autosave' + Int2Fix(I - 1, 2), IsMultiPlayerOrSpec), SavePath('autosave' + Int2Fix(I, 2), IsMultiPlayerOrSpec));
 
-  //Rename temp to be first in list
-  KMMoveFolder(SavePath('autosave', IsMultiPlayerOrSpec), SavePath('autosave01', IsMultiPlayerOrSpec));
+  Save('autosave01', aTimestamp, True); //Save to temp file
 end;
 
 
@@ -1895,7 +1892,7 @@ end;
 
 
 //Saves the game in all its glory
-procedure TKMGame.SaveGameToFile(const aPathName: String; aTimestamp: TDateTime;
+procedure TKMGame.SaveGameToFile(const aPathName: String; aTimestamp: TDateTime; aAsync: Boolean;
                                  const aMPLocalDataPathName: String = '');
 var
   SaveStream, SaveStreamTxt: TKMemoryStream;
@@ -1941,7 +1938,8 @@ begin
       end
     end;
 
-    TKMemoryStream.AsyncSaveToFileAndFree(SaveStream, aPathName);
+    TKMemoryStream.AsyncSaveToFileAndFree(SaveStream, aPathName, aAsync);
+
     if DoSaveGameAsText then
     begin
       SaveGameToStream(aTimestamp, SaveStreamTxt);
@@ -1959,14 +1957,14 @@ begin
 end;
 
 
-procedure TKMGame.Save(const aSaveName: UnicodeString);
+procedure TKMGame.Save(const aSaveName: UnicodeString; aAsync: Boolean);
 begin
-  Save(aSaveName, UTCNow);
+  Save(aSaveName, UTCNow, aAsync);
 end;
 
 
 //Saves game by provided name
-procedure TKMGame.Save(const aSaveName: UnicodeString; aTimestamp: TDateTime);
+procedure TKMGame.Save(const aSaveName: UnicodeString; aTimestamp: TDateTime; aAsync: Boolean);
 var
   fullPath, RngPath, mpLocalDataPath, NewSaveName: UnicodeString;
 begin
@@ -1974,7 +1972,7 @@ begin
   fullPath := SaveName(aSaveName, EXT_SAVE_MAIN, IsMultiplayer);
   mpLocalDataPath := SaveName(aSaveName, EXT_SAVE_MP_LOCAL, IsMultiplayer);
 
-  SaveGameToFile(fullPath, aTimestamp, mpLocalDataPath);
+  SaveGameToFile(fullPath, aTimestamp, aAsync, mpLocalDataPath);
 
   if not IsMultiPlayerOrSpec then
     // Update GameSettings for saved positions in lists of saves and replays
@@ -1989,19 +1987,19 @@ begin
   begin
     //Game was saved from replay (.bas file)
     if FileExists(fLoadFromFile) then
-      KMCopyFileAsync(fLoadFromFile, NewSaveName, True);
+      KMCopyFileAsync(fLoadFromFile, NewSaveName, True, aAsync);
   end else
     //Normally saved game
-    KMCopyFileAsync(SaveName('basesave', EXT_SAVE_BASE, IsMultiplayer), NewSaveName, True);
+    KMCopyFileAsync(SaveName('basesave', EXT_SAVE_BASE, IsMultiplayer), NewSaveName, True, aAsync);
 
   //Save replay queue
   gLog.AddTime('Saving replay info');
-  fGameInputProcess.SaveToFile(ChangeFileExt(fullPath, EXT_SAVE_REPLAY_DOT));
+  fGameInputProcess.SaveToFile(ChangeFileExt(fullPath, EXT_SAVE_REPLAY_DOT), aAsync);
 
   if DoSaveRandomChecks then
     try
       RngPath := ChangeFileExt(fullPath, EXT_SAVE_RNG_LOG_DOT);
-      gRandomCheckLogger.SaveToPath(RngPath);
+      gRandomCheckLogger.SaveToPath(RngPath, aAsync);
     except
       on E: Exception do
         gLog.AddTime('Error saving random checks to ' + RngPath); //Silently log error, don't propagate error further

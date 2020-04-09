@@ -455,7 +455,7 @@ begin
   if SaveName = '' then Exit;
 
   fLastSaveName := SaveName; // Do this before saving so it is included in the save
-  gGame.Save(SaveName, UTCNow);
+  gGame.Save(SaveName, UTCNow, True);
 
   fSaves.TerminateScan; // stop scan as it is no longer needed
   SwitchPage(nil); // Close save menu after saving

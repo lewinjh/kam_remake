@@ -56,7 +56,7 @@ type
 
     property Enabled: Boolean read fEnabled write fEnabled;
 
-    procedure SaveToPath(aPath: String);
+    procedure SaveToPath(aPath: String; aAsync: Boolean);
 //    procedure ParseSaveStreamAndSaveAsText(aPath: String);
     procedure SaveAsText(aPath: String);
     procedure LoadFromPath(aPath: String);
@@ -381,7 +381,7 @@ end;
 //end;
 
 
-procedure TKMRandomCheckLogger.SaveToPath(aPath: String);
+procedure TKMRandomCheckLogger.SaveToPath(aPath: String; aAsync: Boolean);
 var
   SaveStream, TickStream: TKMemoryStreamBinary;
 //  CompressionStream: TCompressionStream;
@@ -432,7 +432,7 @@ begin
   //SaveStream now contains the compressed data from SourceStream
 //  CompressionStream.Free;
 
-  TKMemoryStream.AsyncSaveToFileAndFree(SaveStream, aPath);
+  TKMemoryStream.AsyncSaveToFileAndFree(SaveStream, aPath, aAsync);
 end;
 
 

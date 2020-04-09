@@ -353,7 +353,7 @@ type
 
     //Replay methods
     procedure SaveToStream(SaveStream: TKMemoryStream);
-    procedure SaveToFile(const aFileName: UnicodeString);
+    procedure SaveToFile(const aFileName: UnicodeString; aAsync: Boolean);
     procedure LoadFromStream(LoadStream: TKMemoryStream);
     procedure LoadFromFile(const aFileName: UnicodeString);
     property Count: Integer read fCount;
@@ -1108,13 +1108,13 @@ begin
 end;
 
 
-procedure TKMGameInputProcess.SaveToFile(const aFileName: UnicodeString);
+procedure TKMGameInputProcess.SaveToFile(const aFileName: UnicodeString; aAsync: Boolean);
 var
   S: TKMemoryStreamBinary;
 begin
   S := TKMemoryStreamBinary.Create;
   SaveToStream(S);
-  TKMemoryStream.AsyncSaveToFileAndFree(S, aFileName);
+  TKMemoryStream.AsyncSaveToFileAndFree(S, aFileName, aAsync);
 end;
 
 

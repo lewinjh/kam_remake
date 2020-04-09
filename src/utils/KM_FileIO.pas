@@ -18,7 +18,7 @@ uses
   procedure KMCopyFile(const aSrc, aDest: UnicodeString); overload;
   procedure KMCopyFile(const aSrc, aDest: UnicodeString; aOverwrite: Boolean); overload;
 
-  procedure KMCopyFileAsync(const aSrc, aDest: UnicodeString; aOverwrite: Boolean);
+  procedure KMCopyFileAsync(const aSrc, aDest: UnicodeString; aOverwrite: Boolean; aAsync: Boolean);
 
   //Delete a folder (DeleteFolder is different between Delphi and Lazarus)
   procedure KMDeleteFolder(const aPath: UnicodeString);
@@ -172,13 +172,18 @@ begin
 end;
 
 
-procedure KMCopyFileAsync(const aSrc, aDest: UnicodeString; aOverwrite: Boolean);
+procedure KMCopyFileAsync(const aSrc, aDest: UnicodeString; aOverwrite: Boolean; aAsync: Boolean);
 begin
   {$IFDEF WDC}
-  TTask.Run(procedure
+  if aAsync then
   begin
+    TTask.Run(procedure
+    begin
+      KMCopyFile(aSrc, aDest, aOverwrite);
+    end);
+  end
+  else
     KMCopyFile(aSrc, aDest, aOverwrite);
-  end);
   {$ELSE}
   //Non-async
   KMCopyFile(aSrc, aDest, aOverwrite);
