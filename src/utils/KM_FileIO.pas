@@ -209,7 +209,7 @@ begin
       //https://github.com/dotnet/runtime/issues/27958
 
       //Generate a temporary name based on time and random number
-      S := TDirectory.GetParent(ExcludeTrailingPathDelimiter(aPath)) + PathDelim + IntToStr(Random(MaxInt)) + UIntToStr(TimeGet);
+      S := TDirectory.GetParent(ExcludeTrailingPathDelimiter(aPath)) + PathDelim + IntToStr(Random(MaxInt)) + UIntToStr(TimeGet) + PathDelim;
       TDirectory.Move(aPath, S);
       TDirectory.Delete(S, True);
 
