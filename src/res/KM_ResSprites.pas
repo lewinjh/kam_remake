@@ -711,22 +711,49 @@ end;
 
 procedure TKMSpritePack.ExportImage(const aFile: string; aIndex: Integer);
 var
-  I, K: Integer;
+  I, K, dstX, dstY: Integer;
   M: Byte;
   TreatMask: Boolean;
-  pngWidth, pngHeight: Word;
+  srcWidth, srcHeight: Word;
+  dstWidth, dstHeight: Word;
   pngData: TKMCardinalArray;
+const
+  EXPORT_SPRITES_ON_CANVAS = False;
+  CANVAS_SIZE = 256;
+  CANVAS_SIZE_HALF = CANVAS_SIZE div 2;
 begin
-  pngWidth := fRXData.Size[aIndex].X;
-  pngHeight := fRXData.Size[aIndex].Y;
+  srcWidth := fRXData.Size[aIndex].X;
+  srcHeight := fRXData.Size[aIndex].Y;
 
-  SetLength(pngData, pngWidth * pngHeight);
+  dstWidth := srcWidth;
+  dstHeight := srcHeight;
+
+  if EXPORT_SPRITES_ON_CANVAS then
+  begin
+    if (srcWidth > CANVAS_SIZE) or (srcHeight > CANVAS_SIZE) then
+      Exit;
+
+    dstWidth := CANVAS_SIZE;
+    dstHeight := CANVAS_SIZE;
+  end;
+
+  SetLength(pngData, dstWidth * dstHeight);
 
   //Export RGB values
-  for I := 0 to pngHeight - 1 do
-  for K := 0 to pngWidth - 1 do
+  for I := 0 to fRXData.Size[aIndex].Y - 1 do
+  for K := 0 to fRXData.Size[aIndex].X - 1 do
   begin
-    TreatMask := fRXData.HasMask[aIndex] and (fRXData.Mask[aIndex, I*pngWidth + K] > 0);
+    dstY := I;
+    dstX := K;
+    if EXPORT_SPRITES_ON_CANVAS
+    and (abs(fRXData.Pivot[aIndex].Y) < CANVAS_SIZE_HALF)
+    and (abs(fRXData.Pivot[aIndex].Y) < CANVAS_SIZE_HALF) then
+    begin
+      dstY := I + CANVAS_SIZE_HALF + fRXData.Pivot[aIndex].Y;
+      dstX := K + CANVAS_SIZE_HALF + fRXData.Pivot[aIndex].X;
+    end;
+
+    TreatMask := fRXData.HasMask[aIndex] and (fRXData.Mask[aIndex, I*srcWidth + K] > 0);
     if (fRT = rxHouses)
       and ((aIndex < 680)
         or (aIndex = 1657)
@@ -738,20 +765,20 @@ begin
 
     if TreatMask then
     begin
-      M := fRXData.Mask[aIndex, I*pngWidth + K];
+      M := fRXData.Mask[aIndex, I*srcWidth + K];
 
       //Replace background with corresponding brightness of Red
-      if fRXData.RGBA[aIndex, I*pngWidth + K] = FLAG_COLOR_DARK then
+      if fRXData.RGBA[aIndex, I*srcWidth + K] = FLAG_COLOR_DARK then
         //Brightness < 0.5, mix with black
-        pngData[I*pngWidth + K] := M
+        pngData[dstY*dstWidth + dstX] := M
       else
         //Brightness > 0.5, mix with white
-        pngData[I*pngWidth + K] := $FF + (255 - M) * $010100;
+        pngData[dstY*dstWidth + dstX] := $FF + (255 - M) * $010100;
     end
     else
-      pngData[I*pngWidth + K] := fRXData.RGBA[aIndex, I*pngWidth + K] and $FFFFFF;
+      pngData[dstY*dstWidth + dstX] := fRXData.RGBA[aIndex, I*srcWidth + K] and $FFFFFF;
 
-    pngData[I*pngWidth + K] := pngData[I*pngWidth + K] or (fRXData.RGBA[aIndex, I*pngWidth + K] and $FF000000);
+    pngData[dstY*dstWidth + dstX] := pngData[dstY*dstWidth + dstX] or (fRXData.RGBA[aIndex, I*srcWidth + K] and $FF000000);
   end;
 
   //Mark pivot location with a dot
@@ -760,7 +787,7 @@ begin
 //  if InRange(I, 0, pngHeight-1) and InRange(K, 0, pngWidth-1) then
 //    pngData[I*pngWidth + K] := $FFFF00FF;
 
-  SaveToPng(pngWidth, pngHeight, pngData, aFile);
+  SaveToPng(dstWidth, dstHeight, pngData, aFile);
 end;
 
 
