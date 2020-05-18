@@ -718,7 +718,8 @@ var
   dstWidth, dstHeight: Word;
   pngData: TKMCardinalArray;
 const
-  EXPORT_SPRITES_ON_CANVAS = False;
+  EXPORT_SPRITES_ON_CANVAS = True;
+  EXPORT_SPRITES_NO_ALPHA = False;
   CANVAS_SIZE = 256;
   CANVAS_SIZE_HALF = CANVAS_SIZE div 2;
 begin
@@ -738,6 +739,10 @@ begin
   end;
 
   SetLength(pngData, dstWidth * dstHeight);
+
+  if EXPORT_SPRITES_ON_CANVAS and EXPORT_SPRITES_NO_ALPHA then
+    for I := Low(pngData) to High(pngData) do
+      pngData[I] := $FFAF6B6B;
 
   //Export RGB values
   for I := 0 to fRXData.Size[aIndex].Y - 1 do
@@ -779,6 +784,9 @@ begin
       pngData[dstY*dstWidth + dstX] := fRXData.RGBA[aIndex, I*srcWidth + K] and $FFFFFF;
 
     pngData[dstY*dstWidth + dstX] := pngData[dstY*dstWidth + dstX] or (fRXData.RGBA[aIndex, I*srcWidth + K] and $FF000000);
+
+    if EXPORT_SPRITES_NO_ALPHA then
+      pngData[dstY*dstWidth + dstX] := pngData[dstY*dstWidth + dstX] or $FF000000;
   end;
 
   //Mark pivot location with a dot
