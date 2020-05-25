@@ -90,38 +90,39 @@ type
 
     fSaveWorkerThread: TKMWorkerThread;
 
-    procedure GameMPDisconnect(const aData: UnicodeString);
-    procedure OtherPlayerDisconnected(aDefeatedPlayerHandId: Integer);
-    procedure MultiplayerRig(aNewGame: Boolean);
-    procedure SaveGameToStream(aTimestamp: TDateTime; aSaveStream: TKMemoryStream);
-    procedure SaveGameToFile(const aPathName: String; aTimestamp: TDateTime; const aMPLocalDataPathName: String = '');
+    procedure IssueAutosaveCommand(aAfterPT: Boolean = False);
+    function FindHandToSpec: Integer;
     procedure UpdatePeaceTime;
     function GetWaitingPlayersList: TKMByteArray;
-    function FindHandToSpec: Integer;
+    function GetControlledHandIndex: TKMHandID;
+    procedure UserAction(aActionType: TKMUserActionType);
+    function GetReplayAutosaveEffectiveFrequency: Integer;
+    procedure UpdateClockUI;
+    function GetMapEditor: TKMMapEditor;
+    function GetMissionFile: UnicodeString;
+
+    procedure GameMPDisconnect(const aData: UnicodeString);
+    procedure OtherPlayerDisconnected(aDefeatedPlayerHandId: Integer);
+
+    function GetGameTickDuration: Single;
     procedure UpdateTickCounters;
     function GetTicksBehindCnt: Single;
     procedure SetIsPaused(aValue: Boolean);
-    procedure IssueAutosaveCommand(aAfterPT: Boolean = False);
 
-    function GetGameTickDuration: Single;
     procedure GameSpeedActualChanged(aFromSpeed, aToSpeed: Single);
-    function GetControlledHandIndex: TKMHandID;
+    procedure SetGameSpeedActualValue(aSpeed: Single);
+
     procedure IncGameTick;
     procedure CheckPauseGameAtTick;
     function IsReplayEnded: Boolean;
 
-    procedure UserAction(aActionType: TKMUserActionType);
-    function GetReplayAutosaveEffectiveFrequency: Integer;
-
     function DoSaveRandomChecks: Boolean;
     function DoSaveGameAsText: Boolean;
-
-    function GetMissionFile: UnicodeString;
-
-    procedure SetGameSpeedActualValue(aSpeed: Single);
-    procedure UpdateClockUI;
-    function GetMapEditor: TKMMapEditor;
     function DoRenderGame: Boolean;
+
+    procedure MultiplayerRig(aNewGame: Boolean);
+    procedure SaveGameToStream(aTimestamp: TDateTime; aSaveStream: TKMemoryStream);
+    procedure SaveGameToFile(const aPathName: String; aTimestamp: TDateTime; const aMPLocalDataPathName: String = '');
 
     function PlayGameTick: Boolean;
     function PlayReplayTick: Boolean;
@@ -151,8 +152,8 @@ type
 
     function MapSizeInfo: UnicodeString;
 
-    procedure GameMPPlay(Sender: TObject);
-    procedure GameMPReadyToPlay(Sender: TObject);
+    procedure GameMPPlay;
+    procedure GameMPReadyToPlay;
     procedure GameHold(aDoHold: Boolean; Msg: TKMGameResultMsg); //Hold the game to ask if player wants to play after Victory/Defeat/ReplayEnd
     procedure RequestGameHold(Msg: TKMGameResultMsg);
     procedure PlayerVictory(aHandIndex: TKMHandID);
@@ -228,9 +229,7 @@ type
     property GameMode: TKMGameMode read fGameMode;
     property SaveFile: UnicodeString read fSaveFile;
 
-    {$IFDEF RUNNER}
-    procedure SetGameMode(aGameMode: TKMGameMode);
-    {$ENDIF}
+    {$IFDEF RUNNER} procedure SetGameMode(aGameMode: TKMGameMode); {$ENDIF}
 
     function GetScriptSoundFile(const aSound: AnsiString; aAudioFormat: TKMAudioFormat): UnicodeString;
     property LastReplayTick: Cardinal read fLastReplayTick write fLastReplayTick;
@@ -299,7 +298,7 @@ uses
   Classes, Controls, Dialogs, SysUtils, KromUtils, Math, TypInfo,
   {$IFDEF WDC} UITypes, {$ENDIF}
   KM_PathFindingAStarOld, KM_PathFindingAStarNew, KM_PathFindingJPS,
-  KM_Projectiles, KM_AIFields,
+  KM_Projectiles, KM_AIFields, KM_NetworkTypes,
   KM_Main, KM_GameApp, KM_RenderPool, KM_GameInfo, KM_GameClasses,
   KM_Terrain, KM_HandsCollection, KM_HandSpectator, KM_MapEditorHistory,
   KM_MissionScript, KM_MissionScript_Standard, KM_GameInputProcess_Multi, KM_GameInputProcess_Single,
@@ -321,11 +320,7 @@ begin
 
   fVisibleLayers := [mlObjects, mlHouses, mlUnits, mlOverlays];
 
-  fSaveWorkerThread := TKMWorkerThread.Create;
-
-  {$IFDEF DEBUG}
-  TThread.NameThreadForDebugging('SaveWorker', fSaveWorkerThread.ThreadID);
-  {$ENDIF}
+  fSaveWorkerThread := TKMWorkerThread.Create('SaveWorker');
 
   fGameMode := aGameMode;
   fNetworking := aNetworking;
@@ -404,7 +399,7 @@ begin
 
   fIgnoreConsistencyCheckErrors := False;
 
-  case PathFinderToUse of
+  case PATHFINDER_TO_USE of
     0:    fPathfinding := TPathfindingAStarOld.Create;
     1:    fPathfinding := TPathfindingAStarNew.Create;
     2:    fPathfinding := TPathfindingJPS.Create;
@@ -779,6 +774,7 @@ var
   I: Integer;
   HIndex: TKMHandID;
   isPT: Boolean;
+  playerNikname: AnsiString;
   oldSpeedPT, oldSpeedAfterPT: Single;
 begin
   oldSpeedPT := fGameOptions.SpeedPT;
@@ -831,11 +827,19 @@ begin
       end;
 
       //In saves players can be changed to AIs, which needs to be stored in the replay
+      //Also one player could replace another, we have to update its player name
       if fNetworking.SelectGameKind = ngkSave then
-        TKMGameInputProcess_Multi(GameInputProcess).PlayerTypeChange(HIndex, gHands[HIndex].HandType);
+      begin
+        if fNetworking.NetPlayers[I].IsHuman then
+          playerNikname := fNetworking.NetPlayers[I].Nikname
+        else
+          playerNikname := '';
 
-      //Set owners name so we can write it into savegame/replay
-      gHands[HIndex].SetOwnerNikname(fNetworking.NetPlayers[I].Nikname);
+        TKMGameInputProcess_Multi(GameInputProcess).PlayerChanged(HIndex, gHands[HIndex].HandType, playerNikname);
+      end;
+
+      //Update player nikname to show in the list for specs, in the stats etc
+      gHands[HIndex].OwnerNikname := fNetworking.NetPlayers[I].Nikname;
     end;
 
   //Find enabled human hands, where if there is no net player on that loc
@@ -922,9 +926,9 @@ begin
 end;
 
 
-//Everyone is ready to start playing
-//Issued by fNetworking at the time depending on each Players lag individually
-procedure TKMGame.GameMPPlay(Sender: TObject);
+// Everyone is ready to start playing
+// Issued by fNetworking at the time depending on each Players lag individually
+procedure TKMGame.GameMPPlay;
 begin
   WaitingPlayersDisplay(False); //Finished waiting for players
   fNetworking.AnnounceGameInfo(MissionTime, GameName);
@@ -932,7 +936,7 @@ begin
 end;
 
 
-procedure TKMGame.GameMPReadyToPlay(Sender: TObject);
+procedure TKMGame.GameMPReadyToPlay;
 begin
   //Update the list of players that are ready to play
   WaitingPlayersDisplay(True);
@@ -1126,7 +1130,7 @@ begin
       csSystem);
 
     if Assigned(fNetworking.OnPlayersSetup) then
-      fNetworking.OnPlayersSetup(nil); //Update players panel
+      fNetworking.OnPlayersSetup; //Update players panel
   end;
 
   if fGameMode = gmMultiSpectate then
@@ -1191,7 +1195,7 @@ begin
                 end;
 
                 if Assigned(fNetworking.OnPlayersSetup) then
-                  fNetworking.OnPlayersSetup(nil); //Update players panel
+                  fNetworking.OnPlayersSetup; //Update players panel
 
               end;
     gmMultiSpectate:
@@ -1201,7 +1205,7 @@ begin
                                                       [gHands[aPlayerIndex].GetOwnerNameColoredU]), csSystem);
 
                 if Assigned(fNetworking.OnPlayersSetup) then
-                  fNetworking.OnPlayersSetup(nil); //Update players panel
+                  fNetworking.OnPlayersSetup; //Update players panel
               end;
     //We have not thought of anything to display on players defeat in Replay
   end;
@@ -1330,7 +1334,7 @@ begin
     fSaveWorkerThread.QueueWork(procedure
     begin
       DoAutoSaveRename(LocalIsMultiPlayerOrSpec);
-    end);
+    end, 'AutoSave');
   {$ELSE}
     DoAutoSaveRename(IsMultiPlayerOrSpec);
   {$ENDIF}
@@ -1447,6 +1451,7 @@ begin
 
     aRender.SetRenderMode(rm2D);
     fActiveInterface.Paint;
+    fGameInputProcess.Paint;
 
   finally
     {$IFDEF PERFLOG}
@@ -1830,14 +1835,12 @@ begin
     fGameInputProcess.CmdGame(gicGameSpeed, aSpeed);
 end;
 
-
 {$IFDEF RUNNER}
 procedure TKMGame.SetGameMode(aGameMode: TKMGameMode);
 begin
   fGameMode := aGameMode;
 end;
 {$ENDIF}
-
 
 procedure TKMGame.SetGameSpeed(aSpeed: Single; aToggle: Boolean);
 begin
@@ -2620,7 +2623,7 @@ begin
   if (fGameMode = gmReplayMulti) and (PTTicks >= fGameTick) then
     PeaceTimeLeft := PTTicks - fGameTick;
 
-  if fGameTick = PAUSE_GAME_AT_TICK then
+  if fGameTick = PAUSE_GAME_AFTER_TICK then
   begin
     if IsReplay then
       SetReplayPause
@@ -2655,8 +2658,8 @@ begin
 
     //Tell the master server about our game on the specific tick (host only)
     if (fGameMode in [gmMulti, gmMultiSpectate]) and fNetworking.IsHost
-      and (((fMissionMode = mmNormal) and (fGameTick = ANNOUNCE_BUILD_MAP))
-      or ((fMissionMode = mmTactic) and (fGameTick = ANNOUNCE_BATTLE_MAP))) then
+      and ((IsNormalMission and (fGameTick = ANNOUNCE_BUILD_MAP))
+      or (IsTactic and (fGameTick = ANNOUNCE_BATTLE_MAP))) then
     fNetworking.ServerQuery.SendMapInfo(fGameName, fGameMapFullCRC, fNetworking.NetPlayers.GetConnectedCount);
 
     fScripting.UpdateState;
@@ -2686,7 +2689,7 @@ begin
     //Make replay save only after everything is updated (UpdateState)
     if gGameApp.GameSettings.SaveCheckpoints
       and (fSavedReplays.Count <= gGameApp.GameSettings.SaveCheckpointsLimit) //Do not allow to spam saves, could cause OUT_OF_MEMORY error
-      and ((fGameTick = MAKE_SAVEPT_AT_TICK)
+      and ((fGameTick = MAKE_SAVEPT_AFTER_TICK)
         or (fGameTick = (fGameOptions.Peacetime*60*10)) //At PT end
         or ((fGameTick mod gGameApp.GameSettings.SaveCheckpointsFreq) = 0)) then
       SaveReplayToMemory;
@@ -2749,7 +2752,7 @@ begin
     if gGameApp.GameSettings.ReplayAutosave
       and (fSavedReplays.Count <= REPLAY_AUTOSAVE_CNT_MAX) //Do not allow to spam saves, could cause OUT_OF_MEMORY error
       and ((fGameTick = 1) //First tick
-        or (fGameTick = MAKE_SAVEPT_AT_TICK)
+        or (fGameTick = MAKE_SAVEPT_AFTER_TICK)
         or (fGameTick = (fGameOptions.Peacetime*60*10)) //At PT end
         or ((fGameTick mod GetReplayAutosaveEffectiveFrequency) = 0)) then
     begin
@@ -2824,6 +2827,7 @@ begin
         gmMapEd:          begin
                             gTerrain.IncAnimStep;
                             gHands.IncAnimStep;
+                            gHands.UpdateVisualState;
                           end;
       end;
     except

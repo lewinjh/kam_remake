@@ -47,7 +47,6 @@ type
     procedure UpdateOrderTargets;
 
     procedure TakeNextOrder;
-    procedure WalkedOut;
     function CanInterruptAction(aForced: Boolean = True): Boolean;
 
     function GetFiringDelay: Byte;
@@ -110,6 +109,8 @@ type
     function CheckForEnemy: Boolean;
     function FindEnemy: TKMUnit;
     function PathfindingShouldAvoid: Boolean; override;
+
+    procedure WalkedOut;
 
     procedure SetActionGoIn(aAction: TKMUnitActionType; aGoDir: TKMGoInDirection; aHouse: TKMHouse); override;
 
@@ -242,9 +243,10 @@ end;
 
 
 procedure TKMUnitWarrior.Kill(aFrom: TKMHandID; aShowAnimation, aForceDelay: Boolean);
-var AlreadyDeadOrDying: Boolean;
+var
+  AlreadyDeadOrDying: Boolean;
 begin
-  AlreadyDeadOrDying := IsDeadOrDying; //Inherrited will kill the unit
+  AlreadyDeadOrDying := IsDeadOrDying; //Inherited will kill the unit
   inherited;
 
   //After inherited so script events can still check which group the warrior is from
@@ -456,7 +458,7 @@ begin
     U := FoundUnits[I];
     if (U is TKMUnitWarrior)
     and (U <> Self)
-    and (UnitGroups[U.UnitType] = UnitGroups[fType]) //They must be the same group type
+    and (UNIT_TO_GROUP_TYPE[U.UnitType] = UNIT_TO_GROUP_TYPE[fType]) //They must be the same group type
     and TKMUnitWarrior(U).InAGroup then //Check if warrior belongs to some Group
     begin
       L := KMLength(aLoc, U.CurrPosition);

@@ -123,7 +123,7 @@ type
     procedure AddHouseBuildSupply(aHouse: TKMHouseType; const Loc: TKMPoint; Wood,Stone: Byte);
     procedure AddHouseWork(aHouse: TKMHouseType; const Loc: TKMPoint; aActSet: TKMHouseActionSet; AnimStep: Cardinal; FlagColor: TColor4; DoImmediateRender: Boolean = False; DoHighlight: Boolean = False; HighlightColor: TColor4 = 0);
     procedure AddHouseSupply(aHouse: TKMHouseType; const Loc: TKMPoint; const R1, R2, R3: array of Byte; DoImmediateRender: Boolean = False; DoHighlight: Boolean = False; HighlightColor: TColor4 = 0);
-    procedure AddHouseMarketSupply(const Loc: TKMPoint; ResType: TKMWareType; ResCount:word; AnimStep: Integer);
+    procedure AddHouseMarketSupply(const Loc: TKMPoint; ResType: TKMWareType; ResCount: Word; AnimStep: Integer);
     procedure AddHouseStableBeasts(aHouse: TKMHouseType; const Loc: TKMPoint; BeastId,BeastAge,AnimStep: Integer; aRX: TRXType = rxHouses);
     procedure AddHouseEater(const Loc: TKMPoint; aUnit: TKMUnitType; aAct: TKMUnitActionType; aDir: TKMDirection; StepId: Integer; OffX,OffY: Single; FlagColor: TColor4);
     procedure AddUnit(aUnit: TKMUnitType; aUID: Integer; aAct: TKMUnitActionType; aDir: TKMDirection; StepId: Integer; StepFrac: Single; pX,pY: Single; FlagColor: TColor4; NewInst: Boolean; DoImmediateRender: Boolean = False; DoHighlight: Boolean = False; HighlightColor: TColor4 = 0);
@@ -594,7 +594,7 @@ begin
     gX := pX + (R.Pivot[Id0].X + R.Size[Id0].X/2) / CELL_SIZE_PX;
     gY := pY + (R.Pivot[Id0].Y + R.Size[Id0].Y) / CELL_SIZE_PX;
     CornerX := pX + R.Pivot[Id].X / CELL_SIZE_PX;
-    CornerY := pY - gTerrain.HeightAt(gX, gY) + (R.Pivot[Id].Y + R.Size[Id].Y) / CELL_SIZE_PX;
+    CornerY := pY - gTerrain.RenderHeightAt(gX, gY) + (R.Pivot[Id].Y + R.Size[Id].Y) / CELL_SIZE_PX;
     if DoImmediateRender then
       RenderSprite(rxTrees, Id, CornerX, CornerY, $FFFFFFFF, Deleting, DELETE_COLOR)
     else
@@ -621,7 +621,7 @@ var
     gX := pX + (R.Pivot[Id0].X + R.Size[Id0].X/2) / CELL_SIZE_PX;
     gY := pY + (R.Pivot[Id0].Y + R.Size[Id0].Y) / CELL_SIZE_PX;
     CornerX := pX + R.Pivot[Id].X / CELL_SIZE_PX;
-    CornerY := pY - gTerrain.HeightAt(gX, gY) + (R.Pivot[Id].Y + R.Size[Id].Y) / CELL_SIZE_PX;
+    CornerY := pY - gTerrain.RenderHeightAt(gX, gY) + (R.Pivot[Id].Y + R.Size[Id].Y) / CELL_SIZE_PX;
 
     if DoImmediateRender then
       RenderSprite(rxTrees, Id, CornerX, CornerY, $FFFFFFFF, Deleting, DELETE_COLOR)
@@ -682,7 +682,7 @@ begin
   gX := Loc.X + (R.Pivot[Id].X + R.Size[Id].X / 2) / CELL_SIZE_PX - 0.5;
   gY := Loc.Y + (R.Pivot[Id].Y + R.Size[Id].Y) / CELL_SIZE_PX - 0.45;
   CornerX := Loc.X + R.Pivot[Id].X / CELL_SIZE_PX - 0.25;
-  CornerY := Loc.Y - gTerrain.HeightAt(gX, gY) + (R.Pivot[Id].Y + R.Size[Id].Y) / CELL_SIZE_PX - 0.55;
+  CornerY := Loc.Y - gTerrain.RenderHeightAt(gX, gY) + (R.Pivot[Id].Y + R.Size[Id].Y) / CELL_SIZE_PX - 0.55;
   fRenderList.AddSpriteG(rxGui, Id, 0, CornerX, CornerY, gX, gY);
 end;
 
@@ -703,7 +703,7 @@ begin
     id := 260 + Wood - 1;
     cornerX := Loc.X + supply[1, Wood].MoveX / CELL_SIZE_PX - 1;
     cornerY := Loc.Y + (supply[1, Wood].MoveY + rx.Size[id].Y) / CELL_SIZE_PX - 1
-                     - gTerrain.Land[Loc.Y + 1, Loc.X].Height / CELL_HEIGHT_DIV;
+                     - gTerrain.Land[Loc.Y + 1, Loc.X].RenderHeight / CELL_HEIGHT_DIV;
     fRenderList.AddSprite(rxHouses, id, cornerX, cornerY);
   end;
 
@@ -712,7 +712,7 @@ begin
     id := 267 + Stone - 1;
     cornerX := Loc.X + supply[2, Stone].MoveX / CELL_SIZE_PX - 1;
     cornerY := Loc.Y + (supply[2, Stone].MoveY + rx.Size[id].Y) / CELL_SIZE_PX - 1
-                     - gTerrain.Land[Loc.Y + 1, Loc.X].Height / CELL_HEIGHT_DIV;
+                     - gTerrain.Land[Loc.Y + 1, Loc.X].RenderHeight / CELL_HEIGHT_DIV;
     fRenderList.AddSprite(rxHouses, id, cornerX, cornerY);
   end;
 end;
@@ -745,7 +745,7 @@ var
   function CornerY(aPic: Integer): Single;
   begin
     Result := aLoc.Y + (R.Pivot[aPic].Y + R.Size[aPic].Y) / CELL_SIZE_PX - 1
-                     - gTerrain.Land[aLoc.Y + 1, aLoc.X].Height / CELL_HEIGHT_DIV;
+                     - gTerrain.Land[aLoc.Y + 1, aLoc.X].RenderHeight / CELL_HEIGHT_DIV;
   end;
 
 begin
@@ -819,7 +819,7 @@ begin
       Id := A.Step[AnimStep mod Byte(A.Count) + 1] + 1;
       CornerX := Loc.X + (R.Pivot[Id].X + A.MoveX) / CELL_SIZE_PX - 1;
       CornerY := Loc.Y + (R.Pivot[Id].Y + A.MoveY + R.Size[Id].Y) / CELL_SIZE_PX - 1
-                       - gTerrain.Land[Loc.Y + 1, Loc.X].Height / CELL_HEIGHT_DIV;
+                       - gTerrain.Land[Loc.Y + 1, Loc.X].RenderHeight / CELL_HEIGHT_DIV;
 
       if DoImmediateRender then
         RenderSprite(rxHouses, Id, CornerX, CornerY, FlagColor, DoHighlight, HighlightColor)
@@ -844,7 +844,7 @@ var
 
     CornerX := Loc.X + R.Pivot[aId].X / CELL_SIZE_PX - 1;
     CornerY := Loc.Y + (R.Pivot[aId].Y + R.Size[aId].Y) / CELL_SIZE_PX - 1
-                     - gTerrain.Land[Loc.Y + 1, Loc.X].Height / CELL_HEIGHT_DIV;
+                     - gTerrain.Land[Loc.Y + 1, Loc.X].RenderHeight / CELL_HEIGHT_DIV;
     if DoImmediateRender then
     begin
       RenderSprite(rxHouses, aId, CornerX, CornerY, $0, DoHighlight, HighlightColor)
@@ -904,25 +904,25 @@ begin
 end;
 
 
-procedure TRenderPool.AddHouseMarketSupply(const Loc: TKMPoint; ResType: TKMWareType; ResCount:word; AnimStep: Integer);
+procedure TRenderPool.AddHouseMarketSupply(const Loc: TKMPoint; ResType: TKMWareType; ResCount: Word; AnimStep: Integer);
 var
-  i, Id: Integer;
+  I, Id: Integer;
   CornerX, CornerY: Single;
   R: TRXData;
 begin
   if ResType = wtHorse then // Horses are a beast, BeastId is the count, age is 1
-    for i:=1 to Min(ResCount, MarketWares[ResType].Count) do // Render each beast
-      AddHouseStableBeasts(htMarketplace, Loc, i, 1, AnimStep, rxHouses)
+    for I := 1 to Min(ResCount, MARKET_WARES[ResType].Count) do // Render each beast
+      AddHouseStableBeasts(htMarketplace, Loc, I, 1, AnimStep, rxHouses)
   else
   begin
-    if MarketWares[ResType].Count = 0 then exit;
-    Id := (MarketWares[ResType].TexStart-1) + Min(ResCount, MarketWares[ResType].Count);
+    if MARKET_WARES[ResType].Count = 0 then Exit;
+    Id := (MARKET_WARES[ResType].TexStart-1) + Min(ResCount, MARKET_WARES[ResType].Count);
     if Id = 0 then Exit;
 
     R := fRXData[rxHouses];
-    CornerX := Loc.X + (R.Pivot[Id].X + MarketWaresOffsetX) / CELL_SIZE_PX - 1;
-    CornerY := Loc.Y + (R.Pivot[Id].Y + MarketWaresOffsetY + R.Size[Id].Y) / CELL_SIZE_PX - 1
-                     - gTerrain.Land[Loc.Y+1,Loc.X].Height / CELL_HEIGHT_DIV;
+    CornerX := Loc.X + (R.Pivot[Id].X + MARKET_WARES_OFF_X) / CELL_SIZE_PX - 1;
+    CornerY := Loc.Y + (R.Pivot[Id].Y + MARKET_WARES_OFF_Y + R.Size[Id].Y) / CELL_SIZE_PX - 1
+                     - gTerrain.Land[Loc.Y+1,Loc.X].RenderHeight / CELL_HEIGHT_DIV;
     fRenderList.AddSprite(rxHouses, Id, CornerX, CornerY);
   end;
 end;
@@ -942,7 +942,7 @@ begin
   Id := A.Step[AnimStep mod Byte(A.Count) + 1] + 1;
   CornerX := Loc.X + (A.MoveX + R.Pivot[Id].X) / CELL_SIZE_PX - 1;
   CornerY := Loc.Y + (A.MoveY + R.Pivot[Id].Y + R.Size[Id].Y) / CELL_SIZE_PX - 1
-                   - gTerrain.Land[Loc.Y + 1, Loc.X].Height / CELL_HEIGHT_DIV;
+                   - gTerrain.Land[Loc.Y + 1, Loc.X].RenderHeight / CELL_HEIGHT_DIV;
   fRenderList.AddSprite(aRX, Id, CornerX, CornerY);
 end;
 
@@ -998,7 +998,7 @@ var
   R: TRXData;
 begin
   Id := GetUnitAnimSprite(aUnit, aAct, aDir, StepId, 0.0);
-  Id0 := GetUnitAnimSprite(aUnit, aAct, aDir, UnitStillFrames[aDir], 0.0);
+  Id0 := GetUnitAnimSprite(aUnit, aAct, aDir, UNIT_STILL_FRAMES[aDir], 0.0);
   if Id <= 0 then exit;
   R := fRXData[rxUnits];
 
@@ -1038,7 +1038,7 @@ begin
   // Eaters need to interpolate land height the same as the inn otherwise they are rendered at the wrong place
   CornerX := Loc.X + OffX + R.Pivot[Id].X / CELL_SIZE_PX - 1;
   CornerY := Loc.Y + OffY + (R.Pivot[Id].Y + R.Size[Id].Y) / CELL_SIZE_PX - 1
-                   - gTerrain.Land[Loc.Y + 1, Loc.X].Height / CELL_HEIGHT_DIV;
+                   - gTerrain.Land[Loc.Y + 1, Loc.X].RenderHeight / CELL_HEIGHT_DIV;
 
   fRenderList.AddSprite(rxUnits, Id, CornerX, CornerY, FlagColor);
 end;
@@ -1077,7 +1077,7 @@ begin
 
   // Unit position
   A := gRes.Units[aUnit].UnitAnim[aAct, aDir];
-  Id0 := A.Step[UnitStillFrames[aDir] mod Byte(A.Count) + 1] + 1;
+  Id0 := A.Step[UNIT_STILL_FRAMES[aDir] mod Byte(A.Count) + 1] + 1;
 
   // Units feet
   Ground := pY + (R.Pivot[Id0].Y + R.Size[Id0].Y) / CELL_SIZE_PX;
@@ -1119,7 +1119,7 @@ begin
 
   // Unit position
   A := gRes.Units[aUnit].UnitAnim[aAct, aDir];
-  Id0 := A.Step[UnitStillFrames[aDir] mod Byte(A.Count) + 1] + 1;
+  Id0 := A.Step[UNIT_STILL_FRAMES[aDir] mod Byte(A.Count) + 1] + 1;
 
   // Units feet
   Ground := pY + (R.Pivot[Id0].Y + R.Size[Id0].Y) / CELL_SIZE_PX;
@@ -1129,8 +1129,8 @@ begin
   IdFlag := A.Step[FlagAnim mod Byte(A.Count) + 1] + 1;
   if IdFlag <= 0 then Exit;
 
-  FlagX := pX + (R.Pivot[IdFlag].X + FlagXOffset[UnitGroups[aUnit], aDir]) / CELL_SIZE_PX - 0.5;
-  FlagY := gTerrain.FlatToHeight(pX, pY) + (R.Pivot[IdFlag].Y + FlagYOffset[UnitGroups[aUnit], aDir] + R.Size[IdFlag].Y) / CELL_SIZE_PX - 2.25;
+  FlagX := pX + (R.Pivot[IdFlag].X + FlagXOffset[UNIT_TO_GROUP_TYPE[aUnit], aDir]) / CELL_SIZE_PX - 0.5;
+  FlagY := gTerrain.FlatToHeight(pX, pY) + (R.Pivot[IdFlag].Y + FlagYOffset[UNIT_TO_GROUP_TYPE[aUnit], aDir] + R.Size[IdFlag].Y) / CELL_SIZE_PX - 2.25;
 
   if DoImmediateRender then
     RenderSprite(rxUnits, IdFlag, FlagX, FlagY, FlagColor)
@@ -1414,7 +1414,7 @@ begin
     begin
       X := Loc.X + fHouseOutline[I].X - 3;
       Y := Loc.Y + fHouseOutline[I].Y - 4;
-      glVertex2f(X, Y - Land[Y+1, X+1].Height / CELL_HEIGHT_DIV);
+      glVertex2f(X, Y - Land[Y+1, X+1].RenderHeight / CELL_HEIGHT_DIV);
     end;
   glEnd;
 end;
@@ -1732,7 +1732,7 @@ begin
   else begin
     P := gGameCursor.Cell;
     if gTerrain.CanPlaceUnit(P, TKMUnitType(gGameCursor.Tag1)) then
-      AddUnitWithDefaultArm(TKMUnitType(gGameCursor.Tag1), 0, uaWalk, dirS, UnitStillFrames[dirS], P.X+UNIT_OFF_X, P.Y+UNIT_OFF_Y, gMySpectator.Hand.FlagColor, True)
+      AddUnitWithDefaultArm(TKMUnitType(gGameCursor.Tag1), 0, uaWalk, dirS, UNIT_STILL_FRAMES[dirS], P.X+UNIT_OFF_X, P.Y+UNIT_OFF_Y, gMySpectator.Hand.FlagColor, True)
     else
       RenderSpriteOnTile(P, TC_BLOCK); // Red X
   end;

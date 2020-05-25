@@ -968,6 +968,8 @@ const
 { TKMRunnerDesyncTest }
 procedure TKMRunnerDesyncTest.SetUp();
 begin
+  DO_NOT_SKIP_LOAD_TILESET := True; //gGameApp will create game in the inherited call, we need to set this earlier
+
   inherited;
 
   fDesyncsDir := Format('%s..\Desyncs\', [ExeDir]);
@@ -1218,8 +1220,8 @@ var
   desyncCnt, mapsCnt, savesFreq, savesCnt, replayLength: Integer;
   simulLastTick, totalRuns, totalLoads: Integer;
 begin
-  PAUSE_GAME_AT_TICK := -1;    //Pause at specified game tick
-//  MAKE_SAVEPT_AT_TICK := 40800;
+  PAUSE_GAME_AFTER_TICK := -1;    //Pause at specified game tick
+//  MAKE_SAVEPT_AFTER_TICK := 40800;
 
   M := 0;
   desyncCnt := 0;
@@ -1671,8 +1673,8 @@ var
   mapT1, mapT2, score: Cardinal;
 begin
   DEFAULT_PEACE_TIME := 60;
-  PAUSE_GAME_AT_TICK := -1;    //Pause at specified game tick
-//  MAKE_SAVEPT_AT_TICK := 40800;
+  PAUSE_GAME_AFTER_TICK := -1;    //Pause at specified game tick
+//  MAKE_SAVEPT_AFTER_TICK := 40800;
 
   totalRuns := 0;
   fStartTime := TimeGet;

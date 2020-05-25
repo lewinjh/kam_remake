@@ -344,7 +344,7 @@ const
 implementation
 uses
   TypInfo,
-  KM_Game, KM_GameApp, KM_RenderPool, KM_RenderAux, KM_ResTexts, KM_ScriptingEvents,
+  KM_Game, KM_GameApp, KM_RenderPool, KM_RenderAux, KM_ResTexts,
   KM_HandsCollection, KM_UnitWarrior, KM_Resource, KM_ResUnits,
   KM_Hand, KM_MapEditorHistory,
 
@@ -1106,7 +1106,7 @@ begin
   fDirection    := dirS;
   fVisible      := True;
   IsExchanging  := False;
-  AnimStep      := UnitStillFrames[fDirection]; //Use still frame at begining, so units don't all change frame on first tick
+  AnimStep      := UNIT_STILL_FRAMES[fDirection]; //Use still frame at begining, so units don't all change frame on first tick
   Dismissable   := True;
   fLastTimeTrySetActionWalk := 0;
 
@@ -1301,7 +1301,8 @@ begin
     gHands.CleanUpHousePointer(fHome);
   end;
 
-  if aRemoveTileUsage then
+  if aRemoveTileUsage
+    and (gTerrain.Land[NextPosition.Y, NextPosition.X].IsUnit = Self) then //remove lock only if it was made by this unit
     gTerrain.UnitRem(fNextPosition); //Must happen before we nil NextPosition
 
   fIsDead       := True;
@@ -1639,8 +1640,8 @@ begin
   //When standing still in walk, use default frame
   if (aAction = uaWalk) and aStayStill then
   begin
-    aStillFrame := UnitStillFrames[Direction];
-    aStep := UnitStillFrames[Direction];
+    aStillFrame := UNIT_STILL_FRAMES[Direction];
+    aStep := UNIT_STILL_FRAMES[Direction];
   end;
   SetAction(TKMUnitActionStay.Create(Self, aTimeToStay, aAction, aStayStill, aStillFrame, False), aStep);
 end;
@@ -1665,8 +1666,8 @@ begin
   //When standing still in walk, use default frame
   if (aAction = uaWalk) and aStayStill then
   begin
-    aStillFrame := UnitStillFrames[Direction];
-    aStep := UnitStillFrames[Direction];
+    aStillFrame := UNIT_STILL_FRAMES[Direction];
+    aStep := UNIT_STILL_FRAMES[Direction];
   end;
   SetAction(TKMUnitActionStay.Create(Self, aTimeToStay, aAction, aStayStill, aStillFrame, True), aStep);
 end;
@@ -2015,11 +2016,11 @@ begin
       begin
         //There is no space for this unit so it must be destroyed
         //todo: re-route to KillUnit and let it sort out that unit is invisible and cant be placed
-        if (gHands <> nil) and (fOwner <> PLAYER_NONE) and not IsDeadOrDying then
-        begin
-          gHands[fOwner].Stats.UnitLost(fType);
-          gScriptEvents.ProcUnitDied(Self, PLAYER_NONE);
-        end;
+        if    (fOwner <> PLAYER_NONE)
+          and not IsDeadOrDying
+          and Assigned(OnUnitDied) then
+          OnUnitDied(Self, PLAYER_NONE);
+
         //These must be freed before running CloseUnit because task destructors sometimes need access to unit properties
         SetAction(nil);
         FreeAndNil(fTask);
@@ -2043,8 +2044,8 @@ begin
 
       //OnWarriorWalkOut usually happens in TUnitActionGoInOut, otherwise the warrior doesn't get assigned a group
       //Do this after setting terrain usage since OnWarriorWalkOut calls script events
-      if (Self is TKMUnitWarrior) and Assigned(TKMUnitWarrior(Self).OnWarriorWalkOut) then
-        TKMUnitWarrior(Self).OnWarriorWalkOut(TKMUnitWarrior(Self));
+      if (Self is TKMUnitWarrior) then
+        TKMUnitWarrior(Self).WalkedOut;
 
       if Action is TKMUnitActionGoInOut then
         SetActionLockedStay(0, uaWalk); //Abandon the walk out in this case
@@ -2066,7 +2067,9 @@ end;
 
 procedure TKMUnit.UpdateVisualState;
 begin
-  fVisual.UpdateState;
+  // Action could be nil just before death of the unit
+  if (fAction <> nil) then
+    fVisual.UpdateState;
 end;
 
 procedure TKMUnit.VertexAdd(const aFrom, aTo: TKMPoint);

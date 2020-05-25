@@ -58,7 +58,7 @@ type
     class procedure WriteLine      (aFromX, aFromY, aToX, aToY: Single; aCol: TColor4; aPattern: Word = $FFFF; aLineWidth: Integer = -1);
     class procedure WriteText      (aLeft, aTop, aWidth: SmallInt; aText: UnicodeString; aFont: TKMFont; aAlign: TKMTextAlign;
                                     aColor: TColor4 = $FFFFFFFF; aIgnoreMarkup: Boolean = False; aShowMarkup: Boolean = False;
-                                    aShowEolSymbol: Boolean = False; aTabWidth: Integer = TAB_WIDTH; aResetTexture: Boolean = True);
+                                    aShowEolSymbol: Boolean = False; aTabWidth: Integer = TAB_WIDTH; aResetTexture: Boolean = True; aMonospaced: Boolean = False);
     class procedure WriteTextInShape(const aText: string; X,Y: SmallInt; aLineColor, aTextColor: Cardinal; aShapeColor1: Cardinal = $80000000; aText2: string = ''; aShapeColor2: Cardinal = 0; aTextColor2: Cardinal = 0);
     class procedure WriteTexture   (aLeft, aTop, aWidth, aHeight: SmallInt; const aTexture: TTexture; aCol: TColor4);
     class procedure WriteCircle    (aCenterX, aCenterY: SmallInt; aRadius: Byte; aFillColor: TColor4);
@@ -404,9 +404,7 @@ const
   begin
     if InRange(aX, 0, aWidth) then  //Dont allow to render outside of control
     begin
-      //Just draw 2 lines...
-      WriteLine(aX,     1, aX    , aHeight - 1, aColor, aPattern);
-      WriteLine(aX - 1, 1, aX - 1, aHeight - 1, aColor, aPattern);
+      WriteLine(aX,     1, aX    , aHeight - 1, aColor, aPattern, 2);
     end;
   end;
 
@@ -660,14 +658,14 @@ begin
 
   glColor4ubv(@aCol);
 
-  glEnable(GL_LINE_STIPPLE);
-  glLineStipple(2, aPattern);
-
   if aLineWidth <> -1 then
   begin
     glPushAttrib(GL_LINE_BIT);
     glLineWidth(aLineWidth);
   end;
+
+  glEnable(GL_LINE_STIPPLE);
+  glLineStipple(2, aPattern);
 
   glBegin(GL_LINES);
     glVertex2f(aFromX, aFromY);
@@ -684,9 +682,10 @@ end;
 {By default color must be non-transparent white}
 class procedure TKMRenderUI.WriteText(aLeft, aTop, aWidth: SmallInt; aText: UnicodeString; aFont: TKMFont; aAlign: TKMTextAlign;
                                       aColor: TColor4 = $FFFFFFFF; aIgnoreMarkup: Boolean = False; aShowMarkup: Boolean = False;
-                                      aShowEolSymbol: Boolean = False; aTabWidth: Integer = TAB_WIDTH; aResetTexture: Boolean = True);
+                                      aShowEolSymbol: Boolean = False; aTabWidth: Integer = TAB_WIDTH; aResetTexture: Boolean = True;
+                                      aMonospaced: Boolean = False);
 var
-  I, K, Off: Integer;
+  I, K, Off, letW, adj: Integer;
   LineCount,dx,dy,LineHeight,BlockWidth,PrevAtlas, LineWidthInc: Integer;
   LineWidth: array of Integer; //Use signed format since some fonts may have negative CharSpacing
   FontData: TKMFontData;
@@ -710,11 +709,15 @@ var
       glBegin(GL_QUADS);
     end;
 
-    glTexCoord2f(Let.u1, Let.v1); glVertex2f(dx            , dy            + Let.YOffset);
-    glTexCoord2f(Let.u2, Let.v1); glVertex2f(dx + Let.Width, dy            + Let.YOffset);
-    glTexCoord2f(Let.u2, Let.v2); glVertex2f(dx + Let.Width, dy+Let.Height + Let.YOffset);
-    glTexCoord2f(Let.u1, Let.v2); glVertex2f(dx            , dy+Let.Height + Let.YOffset);
-    Inc(dx, Let.Width + FontData.CharSpacing);
+    letW := IfThen(aMonospaced, FONT_INFO[aFont].MaxAnsiCharWidth, Let.Width);
+    // Small adjustment to draw letter i nthe center of its place. Looks better
+    adj := IfThen(aMonospaced, (FONT_INFO[aFont].MaxAnsiCharWidth - Let.Width) div 2, 0);
+
+    glTexCoord2f(Let.u1, Let.v1); glVertex2f(dx + adj           , dy            + Let.YOffset);
+    glTexCoord2f(Let.u2, Let.v1); glVertex2f(dx + adj+ Let.Width, dy            + Let.YOffset);
+    glTexCoord2f(Let.u2, Let.v2); glVertex2f(dx + adj+ Let.Width, dy+Let.Height + Let.YOffset);
+    glTexCoord2f(Let.u1, Let.v2); glVertex2f(dx + adj           , dy+Let.Height + Let.YOffset);
+    Inc(dx, letW + FontData.CharSpacing);
   end;
 
 var
@@ -837,7 +840,7 @@ begin
 
     case aText[I] of
       #9:   dx := aLeft + (Floor((dx - aLeft) / aTabWidth) + 1) * aTabWidth;
-      #32:  Inc(dx, FontData.WordSpacing);
+      #32:  Inc(dx, IfThen(aMonospaced, FONT_INFO[aFont].MaxAnsiCharWidth + FontData.CharSpacing, FontData.WordSpacing));
       #124: if aShowEolSymbol then
               DrawLetter
             else begin

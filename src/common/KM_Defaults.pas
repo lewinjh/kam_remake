@@ -42,6 +42,8 @@ const
   FONTS_FOLDER          = 'data' + PathDelim + 'gfx' + PathDelim + 'fonts' + PathDelim;
   DEFAULT_LOCALE: AnsiString = 'eng';
 
+  MAX_NIKNAME_LENGTH = 16;
+
   DEL_LOGS_OLDER_THAN   = 14;           //in days
 
   TEMPLATE_LIBX_FILE_TEXT = 'text.%s.libx';
@@ -85,8 +87,8 @@ var
   SHOW_DISMISS_GROUP_BTN:Boolean = False; //The button to kill group
   CHECK_8087CW          :Boolean = False; //Check that 8087CW (FPU flags) are set correctly each frame, in case some lib/API changed them
   SCROLL_ACCEL          :Boolean = False; //Acceleration for viewport scrolling
-  INTERPOLATED_RENDER   :Boolean = True; //Interpolate positions/animations in render between game ticks
-  PathFinderToUse       :Byte = 1;
+  INTERPOLATED_RENDER   :Boolean = False; //Interpolate positions/animations in render between game ticks
+  PATHFINDER_TO_USE     :Byte = 1;        //Use TPathfindingAStarNew
 
   //Cache / delivery / pathfinding
   CACHE_PATHFINDING                       :Boolean = True; //Cache routes incase they are needed soon (Vortamic PF runs x4 faster even with lame approach)
@@ -136,6 +138,7 @@ var
   MAPED_SHOW_CONDITION_UNIT_BTNS: Boolean = True; //Show condition Inc/Dec buttons for citizen units in MapEd
   {Gameplay display}
   SKIP_RENDER             :Boolean = False; //Skip all the rendering in favor of faster logic
+  DO_NOT_SKIP_LOAD_TILESET:Boolean = False; //Do not skip load tileset even if SKIP_RENDER is set
   SKIP_SOUND              :Boolean = False; //Skip all the sounds in favor of faster logic
   SKIP_LOADING_CURSOR     :Boolean = False; //Skip loading and setting cursor
   SKIP_SETTINGS_SAVE      :Boolean = False; //Skip save main/game settings into the ini file
@@ -203,23 +206,26 @@ var
   SHOW_NET_PACKETS_LIMIT  :Integer = 1;
   SHOW_SELECTED_OBJ_INFO  :Boolean = False; //Show selected object (Unit/Group + Unit/House) data (UID/order/action etc)
   SHOW_HANDS_INFO         :Boolean = False; //Show hands info
+  SHOW_GIP                :Boolean = False; //Show GIP commands
   INI_HITPOINT_RESTORE    :Boolean = False; //Use the hitpoint restore rate from the INI file to compare with KaM
   SLOW_MAP_SCAN           :Boolean = False; //Scan maps with a pause to emulate uncached file access
   SLOW_SAVE_SCAN          :Boolean = False; //Scan saves with a pause to emulate uncached file access
   SLOW_MAP_SAVE_LOAD      :Boolean = False; //Load map or save to emulate slow network
   DO_PERF_LOGGING         :Boolean = False; //Write each ticks time to log (DEPRECATED PERF_LOGGER)
-  DO_DEV_PERF_LOGGING     :Boolean = True; //Write each ticks time to log
   MP_RESULTS_IN_SP        :Boolean = False; //Display each players stats in SP
-  SHOW_DEBUG_OVERLAY_BEVEL:Boolean = True; //Show debug text overlay Bevel (for better text readability)
+  SHOW_DEBUG_OVERLAY_BEVEL:Boolean = True;  //Show debug text overlay Bevel (for better text readability)
   {Gameplay}
   LOBBY_SET_SPECS_DEFAULT :Boolean = DEBUG_CFG; //Set 'Allow spectators' flag in the lobby by default
   LOBBY_HOST_AS_SPECTATOR :Boolean = DEBUG_CFG; //Host lobby as spectator by default
   USE_CUSTOM_SEED         :Boolean = False; //Use custom seed for every game
   CUSTOM_SEED_VALUE       :Integer = 0;     //Custom seed value
-  PAUSE_GAME_AT_TICK      :Integer = -1;    //Pause at specified game tick
-  MAKE_SAVEPT_AT_TICK     :Integer = -1;    //Make savepoint at a certain tick (for both game and replay)
+  PAUSE_GAME_AFTER_TICK   :Integer = -1;    //Pause after specified game tick
+  MAKE_SAVEPT_AFTER_TICK  :Integer = -1;    //Make savepoint after a certain tick (for both game and replay)
   ALLOW_SAVE_IN_REPLAY    :Boolean = DEBUG_CFG; //Allow to save game from replay, good for debug
   SAVE_GAME_AS_TEXT       :Boolean = True; //Save game serialized //Todo DEBUG. set to False before releases
+
+  DEBUG_TEXT              :String = '';    //Debug text
+  DEBUG_VALUE             :Integer = 0;    //Debug value
   {Gameplay cheats}
   UNLOCK_CAMPAIGN_MAPS    :Boolean = False; //Unlock more maps for debug
   REDUCE_SHOOTING_RANGE   :Boolean = False; //Reduce shooting range for debug
@@ -606,9 +612,9 @@ type
   TKMArmyType = (atIronThenLeather = 0, atLeather = 1, atIron = 2, atIronAndLeather = 3);
 
 const
-  KaMGroupType: array [TKMGroupType] of Byte = (0, 1, 2, 3);
+  GROUP_TYPES: array [TKMGroupType] of Byte = (0, 1, 2, 3);
 
-  UnitGroups: array [WARRIOR_MIN..WARRIOR_MAX] of TKMGroupType = (
+  UNIT_TO_GROUP_TYPE: array [WARRIOR_MIN..WARRIOR_MAX] of TKMGroupType = (
     gtMelee,gtMelee,gtMelee, //utMilitia, utAxeFighter, utSwordsman
     gtRanged,gtRanged,        //utBowman, utArbaletman
     gtAntiHorse,gtAntiHorse,  //utPikeman, utHallebardman,
@@ -623,7 +629,7 @@ const
     );
 
   //AI's prefences for training troops
-  AITroopTrainOrder: array [TKMGroupType, 1..3] of TKMUnitType = (
+  AI_TROOP_TRAIN_ORDER: array [TKMGroupType, 1..3] of TKMUnitType = (
     (utSwordsman,    utAxeFighter, utMilitia),
     (utHallebardman, utPikeman,    utNone),
     (utArbaletman,   utBowman,     utNone),

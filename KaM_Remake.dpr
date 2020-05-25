@@ -207,6 +207,7 @@ uses
   KM_NavMeshInfluences in 'src\navmesh\KM_NavMeshInfluences.pas',
   KM_NavMeshDefences in 'src\navmesh\KM_NavMeshDefences.pas',
   KM_NavMeshArmyPositioning in 'src\navmesh\KM_NavMeshArmyPositioning.pas',
+  KM_NavMeshArmyVectorField in 'src\navmesh\KM_NavMeshArmyVectorField.pas',
 
   {$IFDEF USESECUREAUTH}
     KM_NetAuthSecure in 'src\net\KM_NetAuthSecure.pas',
@@ -225,6 +226,7 @@ uses
   {$IFDEF WDC} KM_NetUDPOverbyte in 'src\net\KM_NetUDPOverbyte.pas', {$ENDIF}
   {$IFDEF FPC} KM_NetUDPLNet in 'src\net\KM_NetUDPLNet.pas', {$ENDIF}
   KM_NetworkClasses in 'src\net\KM_NetworkClasses.pas',
+  KM_NetworkConsts in 'src\net\KM_NetworkConsts.pas',
   KM_Networking in 'src\net\KM_Networking.pas',
   KM_NetworkTypes in 'src\net\KM_NetworkTypes.pas',
 
